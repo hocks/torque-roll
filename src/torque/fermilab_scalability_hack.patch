@@ -1,0 +1,12 @@
+--- ./src/server/process_request.c.orig	2007-11-25 13:40:33.671294973 +0100
++++ ./src/server/process_request.c	2007-11-25 13:40:43.466036745 +0100
+@@ -560,6 +560,9 @@
+ 
+       req_commit(request);
+ 
++      /* Fermilab hack - add sleep after req_commit - djholm@FNAL.GOV */
++      sleep(5);
++
+       net_add_close_func(sfds,(void (*)())0);
+ 
+       break; 

@@ -1,0 +1,30 @@
+<?xml version="1.0" standalone="no"?>
+
+<kickstart>
+
+	<description>
+
+	Ganglia View for PBS Queue
+
+	</description>
+
+	<changelog>
+	$Log: pbs-ganglia.xml,v $
+	Revision 1.1  2005/03/04 01:40:11  mjk
+	massive graph cleanup
+	
+	</changelog>
+
+	<package>pbs-ganglia</package>
+
+<post>
+
+<file name="/var/www/html/homepage/24-queue.html">
+&lt;a href="ganglia/addons/rocks/queue.php"&gt;
+PBS Job Queue&lt;/a&gt;
+</file>
+
+</post>
+
+</kickstart> 
+

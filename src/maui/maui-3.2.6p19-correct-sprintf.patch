@@ -1,0 +1,4380 @@
+>From 4e839a9cfbcd87476bfb7ce26588e72f3a2825aa Mon Sep 17 00:00:00 2001
+From: Eygene Ryabinkin <rea+maui@grid.kiae.ru>
+Date: Wed, 21 Nov 2007 18:54:06 +0300
+Subject: [PATCH] Fix improper use of snprintf arguments
+
+As was found by Earle Nietzel [1] and earlier by Ake Sandgren [2],
+'sprintf (TSLine, "%s %s", TSLine)' provokes errors, since it is
+not defined if the space between two '%s' strings will be first put
+to the 'TSLine' or one will note that TSLine had ended with '\0'.
+
+This code compiled on CentOS 5.0 x86_64 shows wrong behaviour.
+32-bit systems seem to be unaffected (in practice).
+
+The patch is more or less based on the Ake's one that he send me
+privately at the end of 2007, but I had found some other places
+with wrong sprintf() statements.
+
+[1] http://www.clusterresources.com/pipermail/mauiusers/2006-November/002420.html
+[2] http://www.clusterresources.com/pipermail/mauiusers/2005-September/001734.html
+
+Signed-off-by: Eygene Ryabinkin <rea+maui@grid.kiae.ru>
+---
+ contrib/appsim/LocalStage.c |    8 +-
+ contrib/appsim/Net1.c       |   24 ++--
+ src/mcom/MGrid.c            |    4 +-
+ src/mcom/MSU.c              |   12 +-
+ src/mcom/MSec.c             |    8 +-
+ src/moab/MClass.c           |    8 +-
+ src/moab/MCred.c            |  156 +++++++++++-----------
+ src/moab/MJob.c             |   18 +--
+ src/moab/MNode.c            |   34 +++--
+ src/moab/MPBSI.c            |    8 +-
+ src/moab/MPar.c             |  136 ++++++++++----------
+ src/moab/MPriority.c        |   56 ++++----
+ src/moab/MQOS.c             |   32 ++---
+ src/moab/MQueue.c           |   48 ++++----
+ src/moab/MRM.c              |   12 +-
+ src/moab/MRes.c             |   20 ++--
+ src/moab/MSR.c              |   28 ++--
+ src/moab/MSched.c           |  132 ++++++++++++-------
+ src/moab/MSim.c             |   61 ++++++---
+ src/moab/MStats.c           |  110 ++++++++--------
+ src/moab/MSys.c             |   11 +-
+ src/moab/MTrace.c           |    4 +-
+ src/moab/MUH.c              |   36 ++---
+ src/moab/MUI.c              |   84 ++++++------
+ src/moab/MUtil.c            |   89 ++++++-------
+ src/server/LLI.c            |    4 +-
+ src/server/OUserI.c         |   85 ++++++------
+ src/server/Server.c         |   93 ++++++++-----
+ src/server/UserI.c          |  308 ++++++++++++++++++++-----------------------
+ src/server/mclient.c        |   44 +++---
+ src/server/omclient.c       |    4 +-
+ 31 files changed, 860 insertions(+), 817 deletions(-)
+
+diff --git a/contrib/appsim/LocalStage.c b/contrib/appsim/LocalStage.c
+index 84bdfa4..06c3482 100644
+--- a/contrib/appsim/LocalStage.c
++++ b/contrib/appsim/LocalStage.c
+@@ -300,8 +300,8 @@ int MASLSJobShow(
+ 
+   if (D->IFileName[0] != '\0')
+     {
+-    sprintf(Buffer,"%sINPUT:   File: %s:%d over %s\n",
+-      Buffer,
++    sprintf(Buffer + strlen(Buffer),
++      "INPUT:   File: %s:%d over %s\n",
+       D->IFileName,
+       D->IFileSize,
+       (D->INetRes != NULL) ? D->INetRes->Name : "DEFAULT");
+@@ -309,8 +309,8 @@ int MASLSJobShow(
+ 
+   if (D->OFileName[0] != '\0')
+     {
+-    sprintf(Buffer,"%sOUTPUT:  File: %s:%d over %s\n",
+-      Buffer,
++    sprintf(Buffer + strlen(Buffer),
++      "OUTPUT:  File: %s:%d over %s\n",
+       D->OFileName,
+       D->OFileSize,
+       (D->ONetRes != NULL) ? D->ONetRes->Name : "DEFAULT");
+diff --git a/contrib/appsim/Net1.c b/contrib/appsim/Net1.c
+index 6ebeb23..025f636 100644
+--- a/contrib/appsim/Net1.c
++++ b/contrib/appsim/Net1.c
+@@ -137,27 +137,27 @@ int MASNet1Show(
+ 
+   Buffer[0] = '\0';
+ 
+-  sprintf(Buffer,"%sResource %s  Type:  %s\n\n",
+-    Buffer,
++  sprintf(Buffer + strlen(Buffer),
++    "Resource %s  Type:  %s\n\n",
+     N->Name,
+     "Network");
+ 
+-  sprintf(Buffer,"%sState:  %s\n\n",
+-    Buffer,
++  sprintf(Buffer + strlen(Buffer),
++    "State:  %s\n\n",
+     (N->State == 1) ? "Active" : "Down");
+ 
+-  sprintf(Buffer,"%sBandwidth:  %d MB/s\n",
+-    Buffer,
++  sprintf(Buffer + strlen(Buffer),
++    "Bandwidth:  %d MB/s\n",
+     N->Bandwidth);
+ 
+-  sprintf(Buffer,"%sUpTime:  %s    Data Transferred:  %d MB   Transfers Completed: %d\n",
+-    Buffer,
++  sprintf(Buffer + strlen(Buffer),
++    "UpTime:  %s    Data Transferred:  %d MB   Transfers Completed: %d\n",
+     MULToTString(N->Duration),
+     N->MBTransferred,
+     N->TransfersCompleted);
+   
+-  sprintf(Buffer,"%sAvg Effective BW/Job: %6.2lf   Avg Delay/Job: %6.2lf\n",
+-    Buffer,
++  sprintf(Buffer + strlen(Buffer),
++    "Avg Effective BW/Job: %6.2lf   Avg Delay/Job: %6.2lf\n",
+     (N->TransfersCompleted > 0) ? N->AvgTransferBW / N->TransfersCompleted : 0.0,
+     (N->TransfersCompleted > 0) ? (double)N->AvgTransferDelay / N->TransfersCompleted : 0.0);
+ 
+@@ -184,8 +184,8 @@ int MASNet1Show(
+       strcpy(tmpString,"N/A");
+       }
+ 
+-    sprintf(Buffer,"%s  Transaction[%d]  %s  %d of %d KB   %s -> %s\n",
+-      Buffer,
++    sprintf(Buffer + strlen(Buffer),
++      "  Transaction[%d]  %s  %d of %d KB   %s -> %s\n",
+       tindex,
+       T->FileName,
+       T->DataStaged,     
+diff --git a/src/mcom/MGrid.c b/src/mcom/MGrid.c
+index d9f0e2a..c3ebc47 100644
+--- a/src/mcom/MGrid.c
++++ b/src/mcom/MGrid.c
+@@ -673,8 +673,8 @@ int MGlobusJobToRSL(
+                                                                                 
+         if (DS->Port > 0)
+           {
+-          sprintf(PreString,"%s:%d",
+-            PreString,
++          sprintf(PreString + strlen(PreString),
++            ":%d",
+             DS->Port);
+           }
+         }
+diff --git a/src/mcom/MSU.c b/src/mcom/MSU.c
+index edc481c..2a42e01 100644
+--- a/src/mcom/MSU.c
++++ b/src/mcom/MSU.c
+@@ -1179,8 +1179,8 @@ int MSUSendData(
+ 
+             Align = (int)strlen(S->SBuffer) + (int)strlen(MCKeyword[mckArgs]);
+ 
+-            sprintf(S->SBuffer,"%s%*s%s",
+-              S->SBuffer,
++            sprintf(S->SBuffer + strlen(S->SBuffer),
++              "%*s%s",
+               16 - (Align % 16),
+               " ",
+               MCKeyword[mckData]);
+@@ -1415,14 +1415,14 @@ int MSUSendData(
+ 
+         if (S->Name[0] != '\0')
+           {
+-          sprintf(TSLine,"%s %s%s",
+-            TSLine,
++          sprintf(TSLine + strlen(TSLine),
++            " %s%s",
+             MCKeyword[mckClient],
+             S->Name);
+           }
+ 
+-        sprintf(TSLine,"%s %s",
+-          TSLine,
++        sprintf(TSLine + strlen(TSLine),
++          " %s",
+           MCKeyword[mckData]);
+         
+         MSecGetChecksum2(
+diff --git a/src/mcom/MSec.c b/src/mcom/MSec.c
+index bcbb9f2..5fea975 100644
+--- a/src/mcom/MSec.c
++++ b/src/mcom/MSec.c
+@@ -1041,8 +1041,8 @@ int MSecMD5GetDigest(
+ 
+   for (index = 0;index < MMD5_DIGESTSIZE;index++)
+     {
+-    sprintf(CSString,"%s%02x",
+-      CSString,
++    sprintf(CSString + strlen(CSString),
++      "%02x",
+       (unsigned char)MD5Sum[index]);
+     }  /* END for (index) */
+ 
+@@ -1205,8 +1205,8 @@ int MSecBufToHexEncoding(
+ 
+   for (index = 0;index < IBufLen;index++)
+     {
+-    sprintf(OBuf,"%s%02x",
+-      OBuf,
++    sprintf(OBuf + strlen(OBuf),
++      "%02x",
+       (unsigned char)IBuf[index]);
+     }  /* END for (index) */
+ 
+diff --git a/src/moab/MClass.c b/src/moab/MClass.c
+index e3c6f21..39fbb90 100644
+--- a/src/moab/MClass.c
++++ b/src/moab/MClass.c
+@@ -581,8 +581,8 @@ int MClassConfigLShow(
+       continue;
+       }
+ 
+-    sprintf(Buffer,"%s %s=%s",
+-      Buffer,
++    sprintf(Buffer + strlen(Buffer),
++      " %s=%s",
+       MClassAttr[AList[aindex]],
+       tmpString);
+     }  /* END for (aindex) */
+@@ -820,8 +820,8 @@ int MClassConfigShow(
+ 
+       if (tmpVal[0] != '\0')
+         {
+-        sprintf(tmpLine,"%s %s=%s",
+-          tmpLine,
++        sprintf(tmpLine + strlen(tmpLine),
++	  " %s=%s",
+           MClassAttr[aindex],
+           tmpVal);
+         }
+diff --git a/src/moab/MCred.c b/src/moab/MCred.c
+index 60ccd38..241c5f9 100644
+--- a/src/moab/MCred.c
++++ b/src/moab/MCred.c
+@@ -1796,8 +1796,8 @@ char *MCredShowAttrs(
+ 
+         if (Priority != 0)
+           {
+-          sprintf(Line,"%s %s=%ld",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%ld",
+             MCredAttr[pindex],
+             Priority);
+           }
+@@ -1809,8 +1809,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(AP,mptMaxJob,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -1822,8 +1822,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(AP,mptMaxNode,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -1835,8 +1835,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(AP,mptMaxPE,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -1848,8 +1848,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(AP,mptMaxProc,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -1861,8 +1861,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(AP,mptMaxPS,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -1874,8 +1874,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(AP,mptMaxWC,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -1887,8 +1887,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(AP,mptMaxMem,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -1900,8 +1900,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(IP,mptMaxJob,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -1913,8 +1913,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(IP,mptMaxNode,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -1926,8 +1926,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(IP,mptMaxPE,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -1939,8 +1939,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(IP,mptMaxProc,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -1952,8 +1952,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(IP,mptMaxPS,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -1965,8 +1965,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(IP,mptMaxWC,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -1978,8 +1978,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(IP,mptMaxMem,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -1991,8 +1991,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(OAP,mptMaxJob,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -2004,8 +2004,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(OAP,mptMaxNode,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -2017,8 +2017,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(OAP,mptMaxPE,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -2030,8 +2030,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(OAP,mptMaxProc,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -2043,8 +2043,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(OAP,mptMaxPS,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -2056,8 +2056,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(OAP,mptMaxWC,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -2069,8 +2069,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(OAP,mptMaxMem,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -2082,8 +2082,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(OIP,mptMaxJob,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -2095,8 +2095,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(OIP,mptMaxNode,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -2108,8 +2108,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(OIP,mptMaxPE,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -2121,8 +2121,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(OIP,mptMaxProc,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -2134,8 +2134,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(OIP,mptMaxPS,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -2147,8 +2147,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(OIP,mptMaxWC,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -2160,8 +2160,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(OIP,mptMaxMem,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -2173,8 +2173,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(OJP,mptMaxNode,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -2186,8 +2186,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(OJP,mptMaxPE,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -2199,8 +2199,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(OJP,mptMaxProc,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -2212,8 +2212,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(OJP,mptMaxPS,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -2225,8 +2225,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(OJP,mptMaxWC,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -2238,8 +2238,8 @@ char *MCredShowAttrs(
+         if ((Mode & (1 << mcsLimits)) &&
+            ((ptr = __MCredShowLimit(OJP,mptMaxMem,0,ShowUsage)) != NULL))
+           {
+-          sprintf(Line,"%s %s=%s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            " %s=%s",
+             MCredAttr[pindex],
+             ptr);
+           }
+@@ -2322,14 +2322,14 @@ char *__MCredShowLimit(
+   if ((P->SLimit[PlIndex][PtIndex] == 0) || 
+       (P->SLimit[PlIndex][PtIndex] == P->HLimit[PlIndex][PtIndex]))
+     {
+-    sprintf(Line,"%s%d",
+-      Line,
++    sprintf(Line + strlen(Line),
++      "%d",
+       P->HLimit[PlIndex][PtIndex]);
+     }
+   else
+     {
+-    sprintf(Line,"%s%d,%d",
+-      Line,
++    sprintf(Line + strlen(Line),
++      "%d,%d",
+       P->SLimit[PlIndex][PtIndex],
+       P->HLimit[PlIndex][PtIndex]);
+     }
+@@ -3408,8 +3408,8 @@ int MCredConfigShow(
+ 
+     MOGetName(O,OIndex,&OName);
+ 
+-    sprintf(Buffer,"%s%s[%s] %s%s\n",
+-      Buffer,
++    sprintf(Buffer + strlen(Buffer),
++      "%s[%s] %s%s\n",
+       MCredCfgParm[OIndex],
+       OName,
+       tmpLineC,
+@@ -3460,8 +3460,8 @@ int MCredConfigLShow(
+       continue;
+       }
+ 
+-    sprintf(Buf,"%s %s=%s",
+-      Buf,
++    sprintf(Buf + strlen(Buf),
++      " %s=%s",
+       MCredAttr[AList[aindex]],
+       tmpString);
+     }  /* END for (aindex) */
+diff --git a/src/moab/MJob.c b/src/moab/MJob.c
+index 1edabfd..efbe1eb 100644
+--- a/src/moab/MJob.c
++++ b/src/moab/MJob.c
+@@ -4497,8 +4497,8 @@ int MJobReserve(
+           J->Name,
+           IStringTime);
+  
+-        sprintf(Message,"%s (job previously reserved to start in %s)\n",
+-          Message,
++        sprintf(Message + strlen(Message),
++	  " (job previously reserved to start in %s)\n",
+           IStringTime);
+         }
+       else
+@@ -4508,8 +4508,7 @@ int MJobReserve(
+           sindex,
+           RQ->TaskRequestList[sindex]);
+  
+-        sprintf(Message,"%s (intital reservation attempt)\n",
+-          Message);
++        strcat(Message, " (initial reservation attempt)\n");
+         }
+       }    /* END if (MJobGetEStartTime() == FAILURE) */
+     else
+@@ -4540,8 +4539,8 @@ int MJobReserve(
+         J->Name,
+         IStringTime);
+  
+-      sprintf(Message,"%s (job previously reserved to start in %s)\n",
+-        Message,
++      sprintf(Message + strlen(Message),
++        " (job previously reserved to start in %s)\n",
+         IStringTime);
+       }
+     else
+@@ -4549,8 +4548,7 @@ int MJobReserve(
+       DBG(1,fSCHED) DPrint("ALERT:    cannot create new reservation for job %s\n",
+         J->Name); 
+  
+-      sprintf(Message,"%s (intital reservation attempt)\n",
+-        Message);
++      strcat(Message, " (initial reservation attempt)\n");
+       }
+  
+     if (MSched.Mode != msmTest)
+@@ -12469,8 +12467,8 @@ int MJobToTString(
+         {
+         if (RQ[0]->DRes.PSlot[cindex].count > 0)
+           {
+-          sprintf(Classes,"%s[%s:%d]",
+-            Classes,
++          sprintf(Classes + strlen(Classes),
++            "[%s:%d]",
+             MAList[eClass][cindex],
+             RQ[0]->DRes.PSlot[cindex].count);
+           }
+diff --git a/src/moab/MNode.c b/src/moab/MNode.c
+index cb7ecf6..f641222 100644
+--- a/src/moab/MNode.c
++++ b/src/moab/MNode.c
+@@ -2757,22 +2757,22 @@ int MNodeShowState(
+ 
+   if (N->MaxLoad > 0.01)
+     {
+-    sprintf(tmpLine,"%s (MaxLoad: %.2lf)",
+-      tmpLine,
++    sprintf(tmpLine + strlen(tmpLine),
++      " (MaxLoad: %.2lf)",
+       N->MaxLoad);
+     }
+ 
+   if (N->ExtLoad > 0.01)
+     {
+-    sprintf(tmpLine,"%s (ExtLoad: %.2lf)",
+-      tmpLine,
++    sprintf(tmpLine + strlen(tmpLine),
++      " (ExtLoad: %.2lf)",
+       N->ExtLoad);
+     }
+ 
+   if (N->ProcSpeed > 0)
+     {
+-    sprintf(tmpLine,"%s (ProcSpeed: %d)",
+-      tmpLine,
++    sprintf(tmpLine + strlen(tmpLine),
++      " (ProcSpeed: %d)",
+       N->ProcSpeed);
+     }
+ 
+@@ -6369,16 +6369,20 @@ char *MNodePrioFToString(
+ 
+     if (N->P->CW[aindex] == 1.0)
+       {
+-      sprintf(ptr,"%s%s%s",
+-        ptr,
+-        ((N->P->CW[aindex] > 0.0) && (ptr[0] != '\0')) ? "+" : "",
+-        MNPComp[aindex]);
++      if (ptr[0] != '\0')
++        {
++        strcat(ptr, "+");
++        }
++      strcat(ptr, MNPComp[aindex]);
+       }
+     else
+       {
+-      sprintf(ptr,"%s%s%.2lf*%s",
+-        ptr,
+-        ((N->P->CW[aindex] > 0.0) && (ptr[0] != '\0')) ? "+" : "",
++      if ((N->P->CW[aindex] > 0.0) && (ptr[0] != '\0'))
++        {
++        strcat(ptr, "+");
++        }
++      sprintf(ptr + strlen(ptr),
++        "%.2lf*%s",
+         N->P->CW[aindex],
+         MNPComp[aindex]);
+       }
+@@ -6451,8 +6455,8 @@ int MNodeConfigShow(
+         continue;
+         }
+ 
+-      sprintf(NLine,"%s%s%s=%s",
+-        NLine,
++      sprintf(NLine + strlen(NLine),
++        "%s%s=%s",
+         (NLine[0] != '\0') ? " " : "",
+         MNodeAttr[AList[aindex]],
+         tmpLine);
+diff --git a/src/moab/MPBSI.c b/src/moab/MPBSI.c
+index 9035a3b..dba8ba5 100644
+--- a/src/moab/MPBSI.c
++++ b/src/moab/MPBSI.c
+@@ -297,8 +297,8 @@ int MPBSInitialize(
+ 
+   if (R->P[0].Port > 0)
+     {
+-    sprintf(PBSServer,"%s:%d",
+-      PBSServer,
++    sprintf(PBSServer + strlen(PBSServer),
++      ":%d",
+       R->P[0].Port);
+     }
+ 
+@@ -6382,8 +6382,8 @@ int __MPBSNLToTaskString(
+       }
+     else
+       {
+-      sprintf(TSBuf,"%s%s:ppn=%d",
+-        TSBuf,
++      sprintf(TSBuf + strlen(TSBuf),
++        "%s:ppn=%d",
+         tmpHostName,
+         NL[tindex].TC);
+       }
+diff --git a/src/moab/MPar.c b/src/moab/MPar.c
+index 0df6f0d..b0984a1 100644
+--- a/src/moab/MPar.c
++++ b/src/moab/MPar.c
+@@ -969,13 +969,13 @@ int MParShow(
+  
+   MUStrCpy(PList,MParBMToString(MPar[0].F.PAL),sizeof(PList));
+  
+-  sprintf(Buffer,"%sSystem Partition Settings:  PList: %s PDef: %s\n\n",
+-    Buffer,
++  sprintf(Buffer + strlen(Buffer),
++    "System Partition Settings:  PList: %s PDef: %s\n\n",
+     PList,
+     (MPar[0].F.PDef != NULL) ? ((mpar_t  *)MPar[0].F.PDef)->Name : NONE);
+ 
+-  sprintf(Buffer,"%s%-20s %8s\n\n",
+-    Buffer,
++  sprintf(Buffer + strlen(Buffer),
++    "%-20s %8s\n\n",
+     "Name",
+     "Procs");
+  
+@@ -997,8 +997,8 @@ int MParShow(
+  
+     Line[0] = '\0';
+  
+-    sprintf(Buffer,"%s%-20s %8d\n",
+-      Buffer,
++    sprintf(Buffer + strlen(Buffer),
++      "%-20s %8d\n",
+       (P->Name[0] != '\0') ? P->Name : NONE,
+       P->CRes.Procs);
+  
+@@ -1015,8 +1015,8 @@ int MParShow(
+  
+       if (MUBMCheck(pindex,U->F.PAL))
+         {
+-        sprintf(Line,"%s %s%s",
+-          Line,
++        sprintf(Line + strlen(Line),
++          " %s%s",
+           U->Name,
+           MQALType[U->F.PALType]);
+         }
+@@ -1024,8 +1024,8 @@ int MParShow(
+  
+     if (Line[0] != '\0')
+       {
+-      sprintf(Buffer,"%s  Users:    %s\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "  Users:    %s\n",
+         Line);
+       }
+  
+@@ -1042,8 +1042,8 @@ int MParShow(
+  
+       if (MUBMCheck(pindex,G->F.PAL))
+         {
+-        sprintf(Line,"%s %s%s",
+-          Line,
++        sprintf(Line + strlen(Line),
++          " %s%s",
+           G->Name,
+           MQALType[G->F.PALType]);
+         }
+@@ -1051,8 +1051,8 @@ int MParShow(
+  
+     if (Line[0] != '\0')
+       {
+-      sprintf(Buffer,"%s  Groups:   %s\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "  Groups:   %s\n",
+         Line);
+       }
+  
+@@ -1069,8 +1069,8 @@ int MParShow(
+  
+       if (MUBMCheck(pindex,A->F.PAL))
+         {
+-        sprintf(Line,"%s %s%s",
+-          Line,
++        sprintf(Line + strlen(Line),
++          " %s%s",
+           A->Name,
+           MQALType[A->F.PALType]);
+         }
+@@ -1078,8 +1078,8 @@ int MParShow(
+  
+     if (Line[0] != '\0')
+       {
+-      sprintf(Buffer,"%s  Accounts: %s\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "  Accounts: %s\n",
+         Line);
+       }
+ 
+@@ -1096,8 +1096,8 @@ int MParShow(
+ 
+       if (MUBMCheck(pindex,C->F.PAL))
+         {
+-        sprintf(Line,"%s %s%s",
+-          Line,
++        sprintf(Line + strlen(Line),
++          " %s%s",
+           C->Name,
+           MQALType[C->F.PALType]);
+         }
+@@ -1105,23 +1105,23 @@ int MParShow(
+ 
+     if (Line[0] != '\0')
+       {
+-      sprintf(Buffer,"%s  Classes: %s\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++	"  Classes: %s\n",
+         Line);
+       }
+ 
+     if (P->Message != NULL)
+       {
+-      sprintf(Buffer,"%s  Message: %s\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "  Message: %s\n",
+         P->Message);
+       }  /* END if (P->Message) */
+     }  /* END for (pindex) */
+ 
+   /* show resource state */
+ 
+-  sprintf(Buffer,"%s\n%-12s %10s %10s %7s %10s %7s %10s %7s\n\n",
+-    Buffer,
++  sprintf(Buffer + strlen(Buffer),
++    "\n%-12s %10s %10s %7s %10s %7s %10s %7s\n\n",
+     "Partition",
+     "Configured",
+     "Up",
+@@ -1220,8 +1220,8 @@ int MParShow(
+         strcat(Buffer,"----------------------------------------------------------------------------\n");
+         }
+ 
+-      sprintf(Buffer,"%s%-12s %10d %10d %6.2f%c %10d %6.2f%c %10d %6.2f%c\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "%-12s %10d %10d %6.2f%c %10d %6.2f%c %10d %6.2f%c\n",
+         P->Name,
+         CRes,
+         URes,
+@@ -1240,8 +1240,8 @@ int MParShow(
+  
+   strcat(Buffer,"\nClass/Queue State\n\n");
+  
+-  sprintf(Buffer,"%s%12s [<CLASS> <AVAIL>:<UP>]...\n\n",
+-    Buffer,
++  sprintf(Buffer + strlen(Buffer),
++    "%12s [<CLASS> <AVAIL>:<UP>]...\n\n",
+     " ");
+  
+   for (pindex = 0;pindex < MAX_MPAR;pindex++)
+@@ -1258,8 +1258,8 @@ int MParShow(
+       continue;
+       }
+  
+-    sprintf(Buffer,"%s%12s %s\n",
+-      Buffer,
++    sprintf(Buffer + strlen(Buffer),
++      "%12s %s\n",
+       P->Name,
+       MUCAListToString(P->ARes.PSlot,P->URes.PSlot,NULL));
+     }   /* END for (pindex) */
+@@ -1358,9 +1358,7 @@ char *MParBMToString(
+     if (tmpLine[0] != '\0')
+       strcat(tmpLine,":");
+ 
+-    sprintf(tmpLine,"%s%s",
+-      tmpLine,
+-      P->Name);
++    strcat(tmpLine, P->Name);
+     }  /* END for (pindex) */
+  
+   return(tmpLine);
+@@ -2072,8 +2070,8 @@ int MParConfigShow(
+     }
+   else
+     {
+-    sprintf(Buffer,"%s\n# partition %s policies\n\n",
+-      Buffer,
++    sprintf(Buffer + strlen(Buffer),
++      "\n# partition %s policies\n\n",
+       P->Name);
+     }
+ 
+@@ -2135,8 +2133,8 @@ int MParConfigShow(
+   if ((P->JobPrioAccrualPolicy != jpapNONE) || 
+       (VFlag || (PIndex == -1) || (PIndex == pJobPrioAccrualPolicy)))
+     {
+-    sprintf(Buffer,"%s%-30s  %s\n",
+-      Buffer,
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %s\n",
+       MParam[pJobPrioAccrualPolicy],
+       (char *)MJobPrioAccrualPolicyType[P->JobPrioAccrualPolicy]);
+     }
+@@ -2144,8 +2142,8 @@ int MParConfigShow(
+   if ((P->NodeLoadPolicy != nlpNONE) || 
+       (VFlag || (PIndex == -1) || (PIndex == pNodeLoadPolicy)))
+     {
+-    sprintf(Buffer,"%s%-30s  %s\n",
+-      Buffer,
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %s\n",
+       MParam[pNodeLoadPolicy],
+       (char *)MNodeLoadPolicyType[P->NodeLoadPolicy]);
+     }
+@@ -2155,8 +2153,8 @@ int MParConfigShow(
+     if ((P->UseMachineSpeed == TRUE) || 
+         (VFlag || (PIndex == -1) || (PIndex == pUseMachineSpeed)))
+       {
+-      sprintf(Buffer,"%s%-30s  %s\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "%-30s  %s\n",
+         MParam[pUseMachineSpeed],
+         (P->UseMachineSpeed == TRUE) ? "TRUE" : "FALSE");
+       }
+@@ -2164,8 +2162,8 @@ int MParConfigShow(
+     if ((P->UseSystemQueueTime == FALSE) || 
+         (VFlag || (PIndex == -1) || (PIndex == pUseSystemQueueTime)))
+       {
+-      sprintf(Buffer,"%s%-30s  %s\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "%-30s  %s\n",
+         MParam[pUseSystemQueueTime],
+         (P->UseSystemQueueTime == TRUE) ? "TRUE" : "FALSE");
+       }
+@@ -2173,8 +2171,8 @@ int MParConfigShow(
+     if ((P->UseLocalMachinePriority != TRUE) || 
+         (VFlag || (PIndex == -1) || (PIndex == pUseLocalMachinePriority)))
+       {
+-      sprintf(Buffer,"%s%-30s  %s\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "%-30s  %s\n",
+         MParam[pUseLocalMachinePriority],
+         (P->UseLocalMachinePriority == TRUE) ? "TRUE" : "FALSE");
+       }
+@@ -2182,8 +2180,8 @@ int MParConfigShow(
+     if ((P->UntrackedProcFactor > 0.0) || 
+         (VFlag || (PIndex == -1) || (PIndex == pNodeUntrackedProcFactor)))
+       {
+-      sprintf(Buffer,"%s%-30s  %.1lf\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "%-30s  %.1lf\n",
+         MParam[pNodeUntrackedProcFactor],
+         P->UntrackedProcFactor);
+       }
+@@ -2268,8 +2266,8 @@ int MParConfigShow(
+ 
+     for (index = 0;P->NodeSetList[index] != NULL;index++)
+       {
+-      sprintf(tmpLine,"%s%s ",
+-        tmpLine,
++      sprintf(tmpLine + strlen(tmpLine),
++        "%s ",
+         P->NodeSetList[index]);
+       }  /* END for (index) */
+ 
+@@ -2409,8 +2407,8 @@ int MParConfigShow(
+           {
+           if (P->ResourceLimitMaxViolationTime[index] > 0)
+             {
+-            sprintf(tmpLine,"%s%s:%s:%s:%s ",
+-              tmpLine,
++            sprintf(tmpLine + strlen(tmpLine),
++              "%s:%s:%s:%s ",
+               MResourceType[index],
+               MResourceLimitPolicyType[P->ResourceLimitPolicy[index]],
+               MPolicyAction[P->ResourceLimitViolationAction[index]],
+@@ -2418,8 +2416,8 @@ int MParConfigShow(
+             }
+           else
+             {
+-            sprintf(tmpLine,"%s%s:%s:%s ",
+-              tmpLine,
++            sprintf(tmpLine + strlen(tmpLine),
++              "%s:%s:%s ",
+               MResourceType[index],
+               MResourceLimitPolicyType[P->ResourceLimitPolicy[index]],
+               MPolicyAction[P->ResourceLimitViolationAction[index]]);
+@@ -2454,8 +2452,8 @@ int MParConfigShow(
+         if (tmpLine[0] != '\0')
+           strcat(tmpLine," ");
+ 
+-        sprintf(tmpLine,"%s%s:%s",
+-          tmpLine,
++        sprintf(tmpLine + strlen(tmpLine),
++          "%s:%s",
+           MNAvailPolicy[policyindex],
+           (rindex == 0) ? DEFAULT : MResourceType[rindex]);
+         }  /* END for (rindex) */
+@@ -2539,14 +2537,14 @@ int MParConfigShow(
+             {
+             if (P->ResQOSList[index][qindex] == (mqos_t *)MAX_MQOS)
+               {
+-              sprintf(tmpLine,"%s%s ",
+-                tmpLine,
++              sprintf(tmpLine + strlen(tmpLine),
++                "%s ",
+                 ALL);
+               }
+             else
+               {
+-              sprintf(tmpLine,"%s%s ",
+-                tmpLine,
++              sprintf(tmpLine + strlen(tmpLine),
++                "%s ",
+                 P->ResQOSList[index][qindex]->Name);
+               }
+             }
+@@ -2589,18 +2587,22 @@ int MParConfigShow(
+ 
+     /* FS policies */
+ 
+-    sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pFSPolicy],MFSPolicyType[F->FSPolicy]);
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %s\n",MParam[pFSPolicy],MFSPolicyType[F->FSPolicy]);
+ 
+-    sprintf(Buffer,"%s%-30s  %s%s\n",
+-      Buffer,
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %s%s\n",
+       MParam[pFSPolicy],MFSPolicyType[F->FSPolicy],
+       (MSched.PercentBasedFS == TRUE) ? "%" : "");
+ 
+     if ((F->FSPolicy == fspNONE) || (VFlag || (PIndex == -1) || (PIndex == pFSPolicy)))
+       {
+-      sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pFSInterval],MULToTString(F->FSInterval));
+-      sprintf(Buffer,"%s%-30s  %d\n",Buffer,MParam[pFSDepth],F->FSDepth);
+-      sprintf(Buffer,"%s%-30s  %-6.2f\n",Buffer,MParam[pFSDecay],F->FSDecay);
++      sprintf(Buffer + strlen(Buffer),
++        "%-30s  %s\n",MParam[pFSInterval],MULToTString(F->FSInterval));
++      sprintf(Buffer + strlen(Buffer),
++        "%-30s  %d\n",MParam[pFSDepth],F->FSDepth);
++      sprintf(Buffer + strlen(Buffer),
++        "%-30s  %-6.2f\n",MParam[pFSDecay],F->FSDecay);
+ 
+       strcat(Buffer,"\n");
+       }
+diff --git a/src/moab/MPriority.c b/src/moab/MPriority.c
+index 0d0d61c..b6e8306 100644
+--- a/src/moab/MPriority.c
++++ b/src/moab/MPriority.c
+@@ -303,8 +303,8 @@ int MJobGetStartPriority(
+           case mpsCQ: strcat(tmpHeader,"  QOS"); break;        
+           }
+ 
+-        sprintf(tmpCWLine,"%s%5ld",
+-          tmpCWLine,
++        sprintf(tmpCWLine + strlen(tmpCWLine),
++          "%5ld",
+           (long)SWeight[index]);
+         }  /* END for (index) */
+ 
+@@ -344,8 +344,8 @@ int MJobGetStartPriority(
+           case mpsFQ: strcat(tmpHeader,"  QOS"); break;
+           }  /* END switch(index) */
+  
+-        sprintf(tmpCWLine,"%s%5ld",
+-          tmpCWLine,
++        sprintf(tmpCWLine + strlen(tmpCWLine),
++          "%5ld",
+           SWeight[index]);
+         }  /* END for (index) */
+  
+@@ -463,8 +463,8 @@ int MJobGetStartPriority(
+           case mpsSBP:  strcat(tmpHeader,"Bypas"); break;
+           }
+  
+-        sprintf(tmpCWLine,"%s%5ld",
+-          tmpCWLine,
++        sprintf(tmpCWLine + strlen(tmpCWLine),
++          "%5ld",
+           SWeight[index]);
+         }  /* END for (index) */
+  
+@@ -501,8 +501,8 @@ int MJobGetStartPriority(
+           case mpsTXF: strcat(tmpHeader,"XFctr"); break;
+           }
+  
+-        sprintf(tmpCWLine,"%s%5ld",
+-          tmpCWLine,
++        sprintf(tmpCWLine + strlen(tmpCWLine),
++          "%5ld",
+           SWeight[index]);
+         }  /* END for (index) */
+  
+@@ -547,8 +547,8 @@ int MJobGetStartPriority(
+           case mpsRWallTime: strcat(tmpHeader,"WTime"); break;  
+           }
+  
+-        sprintf(tmpCWLine,"%s%5ld",
+-          tmpCWLine,
++        sprintf(tmpCWLine + strlen(tmpCWLine),
++          "%5ld",
+           SWeight[index]);
+         }  /* END for (index) */
+  
+@@ -586,8 +586,8 @@ int MJobGetStartPriority(
+           case mpsUPerC:     strcat(tmpHeader,"PerC "); break;
+           }
+  
+-        sprintf(tmpCWLine,"%s%5ld",
+-          tmpCWLine,
++        sprintf(tmpCWLine + strlen(tmpCWLine),
++          "%5ld",
+           SWeight[index]);
+         }  /* END for (index) */
+  
+@@ -735,8 +735,8 @@ int MJobGetStartPriority(
+               ABS(((double)TotalSFactor[sindex] * SWeight[sindex] * CWeight[cindex] * 100.0 / TotalPriority)) :
+               0.0);
+ 
+-          sprintf(tmpLine,"%s%5.5s",
+-            tmpLine,
++          sprintf(tmpLine + strlen(tmpLine),
++            "%5.5s",
+             tmpS);
+           }  /* END for (sindex) */
+  
+@@ -1284,8 +1284,8 @@ int MJobGetStartPriority(
+ 
+         sprintf(tmpS,"%3.1lf",ABS(SFactor[index]));
+          
+-        sprintf(tmpLine,"%s%5.5s",
+-          tmpLine,
++        sprintf(tmpLine + strlen(tmpLine),
++          "%5.5s",
+           tmpS); 
+         }  /* END for (index) */
+  
+@@ -1319,8 +1319,8 @@ int MJobGetStartPriority(
+         sprintf(tmpS,"%3.1lf",
+           tmpD);
+  
+-        sprintf(tmpLine,"%s%5.5s",
+-          tmpLine,
++        sprintf(tmpLine + strlen(tmpLine),
++          "%5.5s",
+           tmpS); 
+         }  /* END for (index) */
+  
+@@ -1354,8 +1354,8 @@ int MJobGetStartPriority(
+         sprintf(tmpS,"%3.1lf",
+           tmpD);
+ 
+-        sprintf(tmpLine,"%s%5.5s",
+-          tmpLine,
++        sprintf(tmpLine + strlen(tmpLine),
++          "%5.5s",
+           tmpS);
+         }  /* END for (index) */
+ 
+@@ -1389,8 +1389,8 @@ int MJobGetStartPriority(
+         sprintf(tmpS,"%3.1lf",
+           tmpD);
+  
+-        sprintf(tmpLine,"%s%5.5s",
+-          tmpLine,
++        sprintf(tmpLine + strlen(tmpLine),
++          "%5.5s",
+           tmpS);
+         }  /* END for (index) */
+  
+@@ -1424,8 +1424,8 @@ int MJobGetStartPriority(
+         sprintf(tmpS,"%3.1lf",
+           CP[mpcTarg]);
+  
+-        sprintf(tmpLine,"%s%5.5s",
+-          tmpLine,
++        sprintf(tmpLine + strlen(tmpLine),
++	  "%5.5s",
+           tmpS);
+         }  /* END for (index) */
+  
+@@ -1459,8 +1459,8 @@ int MJobGetStartPriority(
+         sprintf(tmpS,"%3.1lf",
+           tmpD);
+  
+-        sprintf(tmpLine,"%s%5.5s",
+-          tmpLine,
++        sprintf(tmpLine + strlen(tmpLine),
++          "%5.5s",
+           tmpS);
+         }  /* END for (index) */
+  
+@@ -1494,8 +1494,8 @@ int MJobGetStartPriority(
+         sprintf(tmpS,"%3.1lf", 
+           tmpD);
+  
+-        sprintf(tmpLine,"%s%5.5s",
+-          tmpLine,
++        sprintf(tmpLine + strlen(tmpLine),
++          "%5.5s",
+           tmpS);
+         }  /* END for (index) */
+  
+diff --git a/src/moab/MQOS.c b/src/moab/MQOS.c
+index c2661a2..33f011c 100644
+--- a/src/moab/MQOS.c
++++ b/src/moab/MQOS.c
+@@ -1014,14 +1014,12 @@ char *MQOSBMToString(
+ 
+     if (Q->Name[0] != '\0')
+       { 
+-      sprintf(tmpLine,"%s%s",
+-        tmpLine,
+-        Q->Name);
++      strcat(tmpLine, Q->Name);
+       }
+     else
+       {
+-      sprintf(tmpLine,"%s%d",
+-        tmpLine,
++      sprintf(tmpLine + strlen(tmpLine),
++        "%d",
+         Q->Index);
+       }
+     }  /* END for (bindex) */
+@@ -1155,8 +1153,8 @@ int MQOSShow(
+  
+       if (MUBMCheck(qindex,U->F.QAL))
+         {
+-        sprintf(Line,"%s %s%s",
+-          Line,
++        sprintf(Line + strlen(Line),
++          " %s%s",
+           U->Name,
+           MQALType[U->F.QALType]);
+         }
+@@ -1181,8 +1179,8 @@ int MQOSShow(
+  
+       if (MUBMCheck(qindex,G->F.QAL))
+         {
+-        sprintf(Line,"%s %s%s",
+-          Line,
++        sprintf(Line + strlen(Line),
++          " %s%s",
+           G->Name,
+           MQALType[G->F.QALType]);
+         }
+@@ -1207,8 +1205,8 @@ int MQOSShow(
+  
+       if (MUBMCheck(qindex,A->F.QAL))
+         {
+-        sprintf(Line,"%s %s%s",
+-          Line,
++        sprintf(Line + strlen(Line),
++          " %s%s",
+           A->Name,
+           MQALType[A->F.QALType]);
+         }
+@@ -1233,8 +1231,8 @@ int MQOSShow(
+ 
+       if (MUBMCheck(qindex,C->F.QAL))
+         {
+-        sprintf(Line,"%s %s%s",
+-          Line,
++        sprintf(Line + strlen(Line),
++          " %s%s",
+           C->Name,
+           MQALType[C->F.QALType]);
+         }
+@@ -1918,8 +1916,8 @@ char *MQOSFlagsToString(
+           break; 
+           }
+ 
+-        sprintf(Line,"%s:%s",
+-          Line,
++        sprintf(Line + strlen(Line),
++          ":%s",
+           Q->ResName[rindex]);
+         }  /* END for (rindex) */
+       }
+@@ -1970,8 +1968,8 @@ int MQOSConfigLShow(
+       continue;
+       }
+ 
+-    sprintf(Buffer,"%s %s=%s",
+-      Buffer,
++    sprintf(Buffer + strlen(Buffer),
++      " %s=%s",
+       MQOSAttr[AList[aindex]],
+       tmpString);
+     }  /* END for (aindex) */
+diff --git a/src/moab/MQueue.c b/src/moab/MQueue.c
+index aba2bbb..0b92a53 100644
+--- a/src/moab/MQueue.c
++++ b/src/moab/MQueue.c
+@@ -1068,8 +1068,8 @@ int MQueueDiagnose(
+ 
+   /* NOTE:  must be synchronized with MQueueSelectJobs() and MJobCheckPolicies() */
+  
+-  sprintf(Buffer,"%sDiagnosing blocked jobs (policylevel %s  partition %s)\n\n",
+-    Buffer,
++  sprintf(Buffer + strlen(Buffer),
++    "Diagnosing blocked jobs (policylevel %s  partition %s)\n\n",
+     MPolicyMode[PLevel],
+     PS->Name);
+  
+@@ -1129,8 +1129,8 @@ int MQueueDiagnose(
+  
+     if ((J->State != mjsIdle) && (J->State != mjsHold))
+       {
+-      sprintf(Buffer,"%sjob %-20s has non-idle state (state: '%s')\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "job %-20s has non-idle state (state: '%s')\n",
+         J->Name,
+         MJobState[J->State]);
+  
+@@ -1141,8 +1141,8 @@ int MQueueDiagnose(
+  
+     if (J->Hold != 0)
+       {
+-      sprintf(Buffer,"%sjob %-20s has the following hold(s) in place: ",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "job %-20s has the following hold(s) in place: ",
+         J->Name);
+  
+       for (index = 0;MHoldType[index] != NULL;index++)
+@@ -1163,8 +1163,8 @@ int MQueueDiagnose(
+  
+     if (J->EState != mjsIdle)
+       {
+-      sprintf(Buffer,"%sjob %-20s has non-idle expected state (expected state: %s)\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "job %-20s has non-idle expected state (expected state: %s)\n",
+         J->Name,
+         MJobState[J->EState]);
+  
+@@ -1175,8 +1175,8 @@ int MQueueDiagnose(
+  
+     if (J->SMinTime > MSched.Time)
+       {
+-      sprintf(Buffer,"%sjob %-20s has not reached its start date (%s to startdate)\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "job %-20s has not reached its start date (%s to startdate)\n",
+         J->Name,
+         MULToTString(J->SMinTime - MSched.Time));
+  
+@@ -1187,8 +1187,8 @@ int MQueueDiagnose(
+  
+     if (MJobCheckDependency(J,&DType,DValue) == FAILURE)
+       {
+-      sprintf(Buffer,"%sjob %s requires %s of job '%s')\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "job %s requires %s of job '%s')\n",
+         J->Name, 
+         MJobDependType[DType],
+         DValue);
+@@ -1202,8 +1202,8 @@ int MQueueDiagnose(
+         J->Name,
+         PS->Name);
+  
+-      sprintf(Buffer,"%sjob %-20s would violate 'local' fairness policies\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "job %-20s would violate 'local' fairness policies\n",
+         J->Name);
+  
+       IsBlocked = TRUE;
+@@ -1229,8 +1229,8 @@ int MQueueDiagnose(
+         {
+         /* required classes not configured in partition */
+  
+-        sprintf(Buffer,"%sjob %-20s requires classes not configured in partition %s (%s)\n",
+-          Buffer,
++        sprintf(Buffer + strlen(Buffer),
++          "job %-20s requires classes not configured in partition %s (%s)\n",
+           J->Name,
+           P->Name,
+           MUCAListToString(RQ->DRes.PSlot,P->CRes.PSlot,NULL));
+@@ -1242,8 +1242,8 @@ int MQueueDiagnose(
+  
+       if (MUBMCheck(P->Index,J->PAL) == FAILURE)
+         { 
+-        sprintf(Buffer,"%sjob %-20s not allowed to run in partition %s  (partitions allowed: %s)\n",
+-          Buffer,
++        sprintf(Buffer + strlen(Buffer),
++          "job %-20s not allowed to run in partition %s  (partitions allowed: %s)\n",
+           J->Name,
+           P->Name,
+           MUListAttrs(ePartition,J->PAL[0]));
+@@ -1281,8 +1281,8 @@ int MQueueDiagnose(
+             J->Name,
+             MXO[OIndex]);
+  
+-          sprintf(Buffer,"%sjob %-20s would violate %s FS cap in partition %s\n",
+-            Buffer,
++          sprintf(Buffer + strlen(Buffer),
++            "job %-20s would violate %s FS cap in partition %s\n",
+             J->Name,
+             MXO[OIndex],
+             P->Name);
+@@ -1300,8 +1300,8 @@ int MQueueDiagnose(
+         {
+         case mjneIdlePolicy:
+ 
+-          sprintf(Buffer,"%sjob %-20s is blocked by idle job policy\n",
+-            Buffer,
++          sprintf(Buffer + strlen(Buffer),
++            "job %-20s is blocked by idle job policy\n",
+             J->Name);
+ 
+           break;
+@@ -1310,8 +1310,8 @@ int MQueueDiagnose(
+ 
+           if ((PLevel == ptHARD) || (PLevel == ptOFF))
+             {
+-            sprintf(Buffer,"%sjob %-20s is not blocked at this policy level\n",
+-              Buffer,
++            sprintf(Buffer + strlen(Buffer),
++              "job %-20s is not blocked at this policy level\n",
+               J->Name);
+             }
+ 
+diff --git a/src/moab/MRM.c b/src/moab/MRM.c
+index 8bd08a8..b481c59 100644
+--- a/src/moab/MRM.c
++++ b/src/moab/MRM.c
+@@ -2280,8 +2280,8 @@ int MRMAToString(
+ 
+         if (R->SubType != mrmstNONE)
+           {
+-          sprintf(SVal,"%s:%s",
+-            SVal,
++          sprintf(SVal + strlen(SVal),
++            ":%s",
+             MRMSubType[R->SubType]);
+           }
+         }    /* END if (R->Type != mrmtNONE) */
+@@ -2808,8 +2808,8 @@ int MRMConfigShow(
+ 
+       if (tmpVal[0] != '\0')
+         {
+-        sprintf(tmpLine,"%s %s=%s",
+-          tmpLine,
++        sprintf(tmpLine + strlen(tmpLine),
++          " %s=%s",
+           MRMAttr[AList[aindex]],
+           tmpVal);
+         }
+@@ -4698,8 +4698,8 @@ int MRMJobPostUpdate(
+ 
+           if (strlen(Message) + 100 < sizeof(Message))
+             {
+-            sprintf(Message,"%s '%s' ",
+-              Message,
++            sprintf(Message + strlen(Message),
++              " '%s' ",
+               N->Name);
+             }
+ 
+diff --git a/src/moab/MRes.c b/src/moab/MRes.c
+index 1fdb3b8..29e2b25 100644
+--- a/src/moab/MRes.c
++++ b/src/moab/MRes.c
+@@ -1139,8 +1139,8 @@ int MResAToString(
+           case mcmpSSUB:
+           case mcmpSNE:
+ 
+-            sprintf(Buf,"%s%s=%s",
+-              Buf,
++            sprintf(Buf + strlen(Buf),
++              "%s=%s",
+               MAttrO[(int)R->CL[aindex].Type],
+               R->CL[aindex].Name);
+ 
+@@ -1148,8 +1148,8 @@ int MResAToString(
+ 
+           default:
+ 
+-            sprintf(Buf,"%s%s=%ld",
+-              Buf,
++            sprintf(Buf + strlen(Buf),
++              "%s=%ld",
+               MAttrO[(int)R->CL[aindex].Type],
+               R->CL[aindex].Value);
+  
+@@ -7005,8 +7005,8 @@ int MResShowState(
+ 
+   if (R->Priority > 0)
+     {
+-    sprintf(tmpLine,"%s   Priority=%ld",
+-      tmpLine,
++    sprintf(tmpLine + strlen(tmpLine),
++      "   Priority=%ld",
+       R->Priority);
+     }
+ 
+@@ -7019,8 +7019,8 @@ int MResShowState(
+ 
+   if (R->MaxTasks > 0)
+     {
+-    sprintf(tmpLine,"%s   MaxTasks=%d",
+-      tmpLine,
++    sprintf(tmpLine + strlen(tmpLine),
++      "   MaxTasks=%d",
+       R->MaxTasks);
+     }
+ 
+@@ -7043,8 +7043,8 @@ int MResShowState(
+         }
+       }   /* END for (index) */
+ 
+-    sprintf(tmpLine,"%s   CBServer=%s:%d/%s",
+-      tmpLine,
++    sprintf(tmpLine + strlen(tmpLine),
++      "   CBServer=%s:%d/%s",
+       R->CBHost,
+       R->CBPort,
+       tmpCBLine);
+diff --git a/src/moab/MSR.c b/src/moab/MSR.c
+index c5df8de..1476c45 100644
+--- a/src/moab/MSR.c
++++ b/src/moab/MSR.c
+@@ -1344,8 +1344,8 @@ int MSRShow(
+       continue;
+       }
+ 
+-    sprintf(SRLine,"%s%s=%s  ",
+-      SRLine,
++    sprintf(SRLine + strlen(SRLine),
++      "%s=%s  ",
+       MSResAttr[AList[index].PIndex],
+       tmpLine);
+     }  /* END for (index) */
+@@ -1354,8 +1354,8 @@ int MSRShow(
+ 
+   if (SR->TaskCount != 0)
+     {
+-    sprintf(SRLine,"%s%s=%d  ",
+-      SRLine,
++    sprintf(SRLine + strlen(SRLine),
++      "%s=%d  ",
+       MSResAttr[msraTaskCount],
+       SR->TaskCount);
+     }  /* END if (SR->TaskCount != 0) */
+@@ -1364,8 +1364,8 @@ int MSRShow(
+ 
+   if (SR->HostExpression[0] != '\0')
+     {
+-    sprintf(SRLine,"%s%s=%s  ",
+-      SRLine,
++    sprintf(SRLine + strlen(SRLine),
++      "%s=%s  ",
+       MSResAttr[msraHostList],
+       SR->HostExpression);
+     }  /* END if (SR->HostExpression[0] != '\0') */
+@@ -1376,8 +1376,8 @@ int MSRShow(
+     {
+     char tmpLine[MAX_MLINE];
+ 
+-    sprintf(SRLine,"%s%s=%s  ",
+-      SRLine,
++    sprintf(SRLine + strlen(SRLine),
++      "%s=%s  ",
+       MSResAttr[msraFlags],
+       MUBMToString(SR->Flags,MResFlags,' ',tmpLine,NONE));
+     }
+@@ -1386,8 +1386,8 @@ int MSRShow(
+  
+   if (strcmp(tmpLine,NONE))
+     {
+-    sprintf(SRLine,"%s%s=%s  ",
+-      SRLine,
++    sprintf(SRLine + strlen(SRLine),
++      "%s=%s  ",
+       MSResAttr[msraNodeFeatures],
+       tmpLine);
+     }
+@@ -2011,8 +2011,8 @@ int MSRSetRes(
+     strcpy(J->Name,SR->Name);
+     }
+ 
+-  sprintf(J->Name,"%s.%d",
+-    J->Name,
++  sprintf(J->Name + strlen(J->Name),
++    ".%d",
+     DIndex);
+ 
+   J->SpecFlags |= (1 << mjfResMap);
+@@ -2547,8 +2547,8 @@ int MSRUpdate(
+           strcpy(ResName,SR->Name);
+           }
+ 
+-        sprintf(ResName,"%s.%d",
+-          ResName,
++        sprintf(ResName + strlen(ResName),
++          ".%d",
+           DIndex);
+ 
+         /* determine unique reservation name */
+diff --git a/src/moab/MSched.c b/src/moab/MSched.c
+index 9ef5338..fdf24f6 100644
+--- a/src/moab/MSched.c
++++ b/src/moab/MSched.c
+@@ -3460,18 +3460,20 @@ int MSchedOConfigShow(
+ 
+   S = &MSched;
+ 
+-  sprintf(Buffer,"%s%-30s  %s\n",
+-    Buffer,
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %s\n",
+     MParam[pRMPollInterval],
+     MULToTString(S->RMPollInterval));    
+ 
+   if (S->ComputeHost[0] != NULL)
+     {
+-    sprintf(Buffer,"%s%-30s  %s",Buffer,MParam[mcoComputeHosts],S->ComputeHost[0]);
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %s",MParam[mcoComputeHosts],S->ComputeHost[0]);
+ 
+     for (index = 1;S->ComputeHost[index] != NULL;index++)
+       {
+-      sprintf(Buffer,"%s %s",Buffer,S->ComputeHost[index]);
++      sprintf(Buffer + strlen(Buffer),
++        " %s",S->ComputeHost[index]);
+       }  /* END for (index) */
+ 
+     strcat(Buffer,"\n");
+@@ -3483,52 +3485,57 @@ int MSchedOConfigShow(
+ 
+   if ((S->RMJobAggregationTime > 0) || VFlag)
+     {
+-    sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pJobAggregationTime],
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %s\n",MParam[pJobAggregationTime],
+       MULToTString(S->RMJobAggregationTime));    
+     }
+ 
+   if (VFlag || (PIndex == -1) || (PIndex == pNAPolicy))
+     {
+-    sprintf(Buffer,"%s%-30s  %s\n",
+-      Buffer,
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %s\n",
+       MParam[pNAPolicy],
+       MNAccessPolicy[MSched.DefaultNAccessPolicy]);
+     }
+ 
+   if (VFlag || (PIndex == -1) || (MSched.AllocLocalityPolicy != malpNONE))
+     {
+-    sprintf(Buffer,"%s%-30s  %s\n",
+-      Buffer,
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %s\n",
+       MParam[mcoAllocLocalityPolicy],
+       MAllocLocalityPolicy[MSched.AllocLocalityPolicy]);
+     }
+ 
+   if (VFlag || (PIndex == -1) || (MSched.TimePolicy != mtpNONE))
+     {
+-    sprintf(Buffer,"%s%-30s  %s\n",
+-      Buffer,
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %s\n",
+       MParam[mcoTimePolicy],
+       MTimePolicy[MSched.TimePolicy]);
+     }
+ 
+   /* display security parameters */
+ 
+-  sprintf(Buffer,"%s%-30s  %s",Buffer,MParam[mcoAdmin1Users],S->Admin1User[0]);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %s",MParam[mcoAdmin1Users],S->Admin1User[0]);
+ 
+   for (index = 1;S->Admin1User[index][0] != '\0';index++)
+     {
+-    sprintf(Buffer,"%s %s",Buffer,S->Admin1User[index]);
++    sprintf(Buffer + strlen(Buffer),
++      " %s",S->Admin1User[index]);
+     }  /* END for (index) */
+ 
+   strcat(Buffer,"\n");
+ 
+   if (S->Admin2User[0][0] != '\0')
+     {
+-    sprintf(Buffer,"%s%-30s  %s",Buffer,MParam[mcoAdmin2Users],S->Admin2User[0]);
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %s",MParam[mcoAdmin2Users],S->Admin2User[0]);
+ 
+     for (index = 1;S->Admin2User[index][0] != '\0';index++)
+       {
+-      sprintf(Buffer,"%s %s",Buffer,S->Admin2User[index]);
++      sprintf(Buffer + strlen(Buffer),
++        " %s",S->Admin2User[index]);
+       }  /* END for (index) */
+ 
+     strcat(Buffer,"\n");
+@@ -3536,11 +3543,13 @@ int MSchedOConfigShow(
+ 
+   if (S->Admin3User[0][0] != '\0')
+     {
+-    sprintf(Buffer,"%s%-30s  %s",Buffer,MParam[mcoAdmin3Users],S->Admin3User[0]);
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %s",MParam[mcoAdmin3Users],S->Admin3User[0]);
+ 
+     for (index = 1;S->Admin3User[index][0] != '\0';index++)
+       {
+-      sprintf(Buffer,"%s %s",Buffer,S->Admin3User[index]);
++      sprintf(Buffer + strlen(Buffer),
++        " %s",S->Admin3User[index]);
+       }  /* END for (index) */
+ 
+     strcat(Buffer,"\n");
+@@ -3548,11 +3557,13 @@ int MSchedOConfigShow(
+ 
+   if (S->Admin4User[0][0] != '\0')
+     {
+-    sprintf(Buffer,"%s%-30s  %s",Buffer,MParam[mcoAdmin4Users],S->Admin4User[0]);
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %s",MParam[mcoAdmin4Users],S->Admin4User[0]);
+ 
+     for (index = 1;S->Admin4User[index][0] != '\0';index++)
+       {
+-      sprintf(Buffer,"%s %s",Buffer,S->Admin4User[index]);
++      sprintf(Buffer + strlen(Buffer),
++        " %s",S->Admin4User[index]);
+       }  /* END for (index) */
+ 
+     strcat(Buffer,"\n");
+@@ -3560,20 +3571,23 @@ int MSchedOConfigShow(
+ 
+   if ((S->AdminHost[0][0] != '\0') || (VFlag || (PIndex == -1) || (PIndex == mcoAdminHosts)))
+     {
+-    sprintf(Buffer,"%s%-30s  %s",Buffer,MParam[mcoAdminHosts],S->AdminHost[0]);
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %s",MParam[mcoAdminHosts],S->AdminHost[0]);
+ 
+     for (index = 1;index < MAX_MADMINHOSTS;index++)
+       {
+       if (S->AdminHost[index][0] == '\0')
+         break;
+ 
+-      sprintf(Buffer,"%s  %s",Buffer,S->AdminHost[index]);
++      sprintf(Buffer + strlen(Buffer),
++        "  %s",S->AdminHost[index]);
+       }  /* END for (index) */
+ 
+     strcat(Buffer,"\n");
+     }
+ 
+-  sprintf(Buffer,"%s%-30s  %d\n",Buffer,MParam[pNodePollFrequency],S->NodePollFrequency);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %d\n",MParam[pNodePollFrequency],S->NodePollFrequency);
+ 
+   if ((PIndex == pDisplayFlags) || 
+       (S->DisplayFlags != 0) || (VFlag || (PIndex == -1)))
+@@ -3593,71 +3607,93 @@ int MSchedOConfigShow(
+         }
+       }
+ 
+-    sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pDisplayFlags],tmpLine);
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %s\n",MParam[pDisplayFlags],tmpLine);
+     }  /* END if ((PIndex == pDisplayFlags) || ...) */
+ 
+   if ((S->DefaultDomain[0] != '\0') || 
+       (VFlag || (PIndex == -1) || (PIndex == pDefaultDomain)))
+     {
+-    sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pDefaultDomain],S->DefaultDomain);
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %s\n",MParam[pDefaultDomain],S->DefaultDomain);
+     }
+ 
+   if (!strcmp(S->DefaultClassList,DEFAULT_CLASSLIST) || 
+      (VFlag || (PIndex == -1) || (PIndex == pDefaultClassList)))
+     {
+-    sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pDefaultClassList],S->DefaultClassList);
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %s\n",MParam[pDefaultClassList],S->DefaultClassList);
+     }
+ 
+   if ((S->NodeTypeFeatureHeader[0] != '\0') || 
+       (VFlag || (PIndex == -1) || (PIndex == pNodeTypeFeatureHeader)))
+     {
+-    sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pNodeTypeFeatureHeader],S->NodeTypeFeatureHeader);
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %s\n",MParam[pNodeTypeFeatureHeader],S->NodeTypeFeatureHeader);
+     }
+ 
+   if ((S->ProcSpeedFeatureHeader[0] != '\0') || 
+       (VFlag || (PIndex == -1) || (PIndex == pProcSpeedFeatureHeader)))
+     {
+-    sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pProcSpeedFeatureHeader],S->ProcSpeedFeatureHeader);
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %s\n",MParam[pProcSpeedFeatureHeader],S->ProcSpeedFeatureHeader);
+     }
+ 
+   if ((S->PartitionFeatureHeader[0] != '\0') || 
+       (VFlag || (PIndex == -1) || (PIndex == pPartitionFeatureHeader)))
+     {
+-    sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pPartitionFeatureHeader],S->PartitionFeatureHeader);
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %s\n",MParam[pPartitionFeatureHeader],S->PartitionFeatureHeader);
+     }
+ 
+   /* general sched config */
+ 
+-  sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[mcoDeferTime],MULToTString(S->DeferTime));
+-  sprintf(Buffer,"%s%-30s  %d\n",Buffer,MParam[pDeferCount],S->DeferCount);
+-  sprintf(Buffer,"%s%-30s  %d\n",Buffer,MParam[pDeferStartCount],S->DeferStartCount);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %s\n",MParam[mcoDeferTime],MULToTString(S->DeferTime));
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %d\n",MParam[pDeferCount],S->DeferCount);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %d\n",MParam[pDeferStartCount],S->DeferStartCount);
+ 
+-  sprintf(Buffer,"%s%-30s  %ld\n",Buffer,MParam[pJobPurgeTime],S->JobPurgeTime);
+-  sprintf(Buffer,"%s%-30s  %ld\n",Buffer,MParam[pNodePurgeTime],S->NodePurgeTime);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %ld\n",MParam[pJobPurgeTime],S->JobPurgeTime);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %ld\n",MParam[pNodePurgeTime],S->NodePurgeTime);
+ 
+-  sprintf(Buffer,"%s%-30s  %d\n",Buffer,MParam[pAPIFailureThreshhold],S->APIFailureThreshhold);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %d\n",MParam[pAPIFailureThreshhold],S->APIFailureThreshhold);
+ 
+-  sprintf(Buffer,"%s%-30s  %ld\n",Buffer,MParam[pNodeSyncDeadline],S->NodeSyncDeadline);
+-  sprintf(Buffer,"%s%-30s  %ld\n",Buffer,MParam[pJobSyncDeadline],S->JobSyncDeadline);
+-  sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pJobMaxOverrun],MULToTString(S->JobMaxOverrun));
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %ld\n",MParam[pNodeSyncDeadline],S->NodeSyncDeadline);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %ld\n",MParam[pJobSyncDeadline],S->JobSyncDeadline);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %s\n",MParam[pJobMaxOverrun],MULToTString(S->JobMaxOverrun));
+ 
+   if ((PIndex == pNodeMaxLoad) ||
+      (S->DefaultN.MaxLoad > 0.0) || VFlag || (PIndex == -1))
+     {
+-    sprintf(Buffer,"%s%-30s  %.1lf\n",Buffer,MParam[pNodeMaxLoad],S->DefaultN.MaxLoad);
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %.1lf\n",MParam[pNodeMaxLoad],S->DefaultN.MaxLoad);
+     }
+ 
+   strcat(Buffer,"\n");
+ 
+   /* display stat graph parameters */
+ 
+-  sprintf(Buffer,"%s%-30s  %ld\n",Buffer,MParam[pPlotMinTime],MStat.P.MinTime);
+-  sprintf(Buffer,"%s%-30s  %ld\n",Buffer,MParam[pPlotMaxTime],MStat.P.MaxTime);
+-  sprintf(Buffer,"%s%-30s  %ld\n",Buffer,MParam[pPlotTimeScale],MStat.P.TimeStepCount);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %ld\n",MParam[pPlotMinTime],MStat.P.MinTime);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %ld\n",MParam[pPlotMaxTime],MStat.P.MaxTime);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %ld\n",MParam[pPlotTimeScale],MStat.P.TimeStepCount);
+ 
+-  sprintf(Buffer,"%s%-30s  %ld\n",Buffer,MParam[pPlotMinNode],MStat.P.MinNode);
+-  sprintf(Buffer,"%s%-30s  %ld\n",Buffer,MParam[pPlotMaxNode],MStat.P.MaxNode);
+-  sprintf(Buffer,"%s%-30s  %ld\n",Buffer,MParam[pPlotNodeScale],MStat.P.NodeStepCount);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %ld\n",MParam[pPlotMinNode],MStat.P.MinNode);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %ld\n",MParam[pPlotMaxNode],MStat.P.MaxNode);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %ld\n",MParam[pPlotNodeScale],MStat.P.NodeStepCount);
+ 
+   DBG(4,fUI) DPrint("INFO:     plot parameters displayed\n");
+ 
+@@ -4100,8 +4136,8 @@ int MSchedStatToString(
+ 
+       /*            STM ITM RTM IJ EJ AJ UN UP UM IN IP IM CT SJ TPA TPB SPH TMA TMD QP AQP NJA JAC PSX IT RPI WEF WI MXF ABP MBP AQT MQT PSR PSD PSU MSA MSD JE */
+ 
+-      sprintf(Buf,"%s%ld %ld %ld %d %d %d %d %d %d %d %d %d %d %d %lf %lf %lf %lf %lf %d %lu %lf %lf %lf %d %ld %lf %d %lf %lf %d %lf %lu %lf %lf %lf %lf %lf %d %d %lf\n",
+-        Buf,
++      sprintf(Buf + strlen(Buf),
++	"%ld %ld %ld %d %d %d %d %d %d %d %d %d %d %d %lf %lf %lf %lf %lf %d %lu %lf %lf %lf %d %ld %lf %d %lf %lf %d %lf %lu %lf %lf %lf %lf %lf %d %d %lf\n",
+         S->StartTime,
+         MStat.InitTime,
+         RunTime,
+@@ -4606,8 +4642,8 @@ int MSchedProcessOConfig(
+         {
+         for (index = 0;SArray[index] != NULL;index++)
+           {
+-          sprintf(S->DefaultClassList,"%s[%s]",
+-            S->DefaultClassList,
++          sprintf(S->DefaultClassList + strlen(S->DefaultClassList),
++            "[%s]",
+             SArray[index]);
+ 
+           DBG(3,fCONFIG) DPrint("INFO:     default class '%s' added\n",
+diff --git a/src/moab/MSim.c b/src/moab/MSim.c
+index 6bcd079..28b71e1 100644
+--- a/src/moab/MSim.c
++++ b/src/moab/MSim.c
+@@ -2609,11 +2609,16 @@ int MSimShow(
+  
+   char tmpLine[MAX_MLINE];
+  
+-  sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pWorkloadTraceFile],S->WorkloadTraceFile);
+-  sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pResourceTraceFile],S->ResourceTraceFile);
+-  sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pSimAutoShutdown],MPolicyMode[S->AutoShutdown]);
+-  sprintf(Buffer,"%s%-30s  %ld\n",Buffer,MParam[pSimStartTime],S->StartTime);
+-  sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pSimScaleJobRunTime],(S->ScaleJobRunTime == TRUE) ?
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %s\n",MParam[pWorkloadTraceFile],S->WorkloadTraceFile);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %s\n",MParam[pResourceTraceFile],S->ResourceTraceFile);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %s\n",MParam[pSimAutoShutdown],MPolicyMode[S->AutoShutdown]);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %ld\n",MParam[pSimStartTime],S->StartTime);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %s\n",MParam[pSimScaleJobRunTime],(S->ScaleJobRunTime == TRUE) ?
+     "TRUE" : "FALSE");
+  
+   tmpLine[0] = '\0';
+@@ -2629,27 +2634,41 @@ int MSimShow(
+       }
+     }   /* END for (index) */
+  
+-  sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pSimFlags],tmpLine);
+- 
+-  sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pSimJobSubmissionPolicy],MSimQPolicy[S->JobSubmissionPolicy]);
+-  sprintf(Buffer,"%s%-30s  %d\n",Buffer,MParam[pSimInitialQueueDepth],S->InitialQueueDepth);
+- 
+-  sprintf(Buffer,"%s%-30s  %.2lf\n",Buffer,MParam[pSimWCAccuracy],S->WCAccuracy);
+-  sprintf(Buffer,"%s%-30s  %.2lf\n",Buffer,MParam[pSimWCAccuracyChange],S->WCAccuracyChange);
+-  sprintf(Buffer,"%s%-30s  %d\n",Buffer,MParam[pSimNodeCount],S->NodeCount);
+-  sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pSimNCPolicy],MSimNCPolicy[S->NCPolicy]);
+-  sprintf(Buffer,"%s%-30s  %d\n",Buffer,MParam[pSimWCScalingPercent],S->WCScalingPercent);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %s\n",MParam[pSimFlags],tmpLine);
++ 
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %s\n",MParam[pSimJobSubmissionPolicy],MSimQPolicy[S->JobSubmissionPolicy]);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %d\n",MParam[pSimInitialQueueDepth],S->InitialQueueDepth);
++ 
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %.2lf\n",MParam[pSimWCAccuracy],S->WCAccuracy);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %.2lf\n",MParam[pSimWCAccuracyChange],S->WCAccuracyChange);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %d\n",MParam[pSimNodeCount],S->NodeCount);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %s\n",MParam[pSimNCPolicy],MSimNCPolicy[S->NCPolicy]);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %d\n",MParam[pSimWCScalingPercent],S->WCScalingPercent);
+  
+   if (S->ComRate != 0.0)
+     {
+-    sprintf(Buffer,"%s%-30s  %4.2f\n",Buffer,MParam[pComRate],S->ComRate);
+-    sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pCommunicationType],MComType[S->CommunicationType]);
+-    sprintf(Buffer,"%s%-30s  %4.2f\n",Buffer,MParam[pIntraFrameCost],S->IntraFrameCost);
+-    sprintf(Buffer,"%s%-30s  %4.2f\n",Buffer,MParam[pInterFrameCost],S->InterFrameCost);
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %4.2f\n",MParam[pComRate],S->ComRate);
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %s\n",MParam[pCommunicationType],MComType[S->CommunicationType]);
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %4.2f\n",MParam[pIntraFrameCost],S->IntraFrameCost);
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %4.2f\n",MParam[pInterFrameCost],S->InterFrameCost);
+     }
+  
+-  sprintf(Buffer,"%s%-30s  %d\n",Buffer,MParam[pStopIteration],S->StopIteration);
+-  sprintf(Buffer,"%s%-30s  %d\n",Buffer,MParam[pExitIteration],S->ExitIteration);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %d\n",MParam[pStopIteration],S->StopIteration);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %d\n",MParam[pExitIteration],S->ExitIteration);
+  
+   DBG(4,fSIM) DPrint("INFO:     simulation parameters displayed\n");
+  
+diff --git a/src/moab/MStats.c b/src/moab/MStats.c
+index 847887b..343c478 100644
+--- a/src/moab/MStats.c
++++ b/src/moab/MStats.c
+@@ -1462,16 +1462,16 @@ int MStatOpenFile(
+  
+     ptr = MUStrTok(NULL," \t\n",&TokPtr);
+  
+-    sprintf(tmpfile,"%s_%s",
+-      tmpfile,
++    sprintf(tmpfile + strlen(tmpfile),
++      "_%s",
+       ptr);
+  
+     /* get day of month */
+  
+     ptr = MUStrTok(NULL," \t\n",&TokPtr);
+  
+-    sprintf(tmpfile,"%s_%02d",
+-      tmpfile,
++    sprintf(tmpfile + strlen(tmpfile),
++      "_%02d",
+       atoi(ptr));
+  
+     /* ignore time */
+@@ -1482,8 +1482,8 @@ int MStatOpenFile(
+  
+     ptr = MUStrTok(NULL," \t\n",&TokPtr); 
+  
+-    sprintf(tmpfile,"%s_%s",
+-      tmpfile,
++    sprintf(tmpfile + strlen(tmpfile),
++      "_%s",
+       ptr);
+     }
+   else
+@@ -1666,13 +1666,12 @@ int MStatBuildGrid(
+ 
+   if (Mode & 8)
+     {
+-    sprintf(Buffer,"%s         ",
+-      Buffer);
++    strcat(Buffer, "         ");
+     }
+   else
+     {
+-    sprintf(Buffer,"%s[ %5s ]",
+-      Buffer,
++    sprintf(Buffer + strlen(Buffer),
++      "[ %5s ]",
+       "PROCS");
+     }
+ 
+@@ -1680,27 +1679,26 @@ int MStatBuildGrid(
+     {
+     if (Mode & 8)
+       {
+-      sprintf(Buffer,"%s   %8s   ",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "   %8s   ",
+         MUBStringTime(MStat.P.TimeStep[timeindex]));
+       }
+     else
+       {
+-      sprintf(Buffer,"%s[  %8s  ]",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++	"[  %8s  ]",
+         MUBStringTime(MStat.P.TimeStep[timeindex]));
+       }
+     }    /* END for (timeindex) */
+ 
+   if (Mode & 8)
+     {
+-    sprintf(Buffer,"%s              \n",
+-    Buffer);
++    strcat(Buffer, "              \n");
+     }
+   else
+     {
+-    sprintf(Buffer,"%s[  %8s  ]\n",
+-      Buffer,
++    sprintf(Buffer + strlen(Buffer),
++      "[  %8s  ]\n",
+       "TOTAL");
+     }
+ 
+@@ -1714,14 +1712,14 @@ int MStatBuildGrid(
+     {
+     if (Mode & 8)
+       {
+-      sprintf(Buffer,"%s  %4ld   ",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "  %4ld   ",
+         MStat.P.NodeStep[procindex]);
+       }
+     else
+       {
+-      sprintf(Buffer,"%s[ %4ld  ]",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "[ %4ld  ]",
+         MStat.P.NodeStep[procindex]);
+       }
+ 
+@@ -1785,18 +1783,18 @@ int MStatBuildGrid(
+     {
+     case stAvgXFactor:
+ 
+-      sprintf(Buffer,"%s%-26s %8.4f\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "%-26s %8.4f\n",
+         "Job Weighted XFactor:",
+         (T->Count > 0) ? (double)T->XFactor / T->Count : 0.0);
+ 
+-      sprintf(Buffer,"%s%-26s %8.4f\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "%-26s %8.4f\n",
+         "Proc Weighted XFactor:",
+         (T->NCount > 0) ? T->NXFactor / T->NCount : 0.0);
+ 
+-      sprintf(Buffer,"%s%-26s %8.4f\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "%-26s %8.4f\n",
+         "PS Weighted XFactor:",
+         (T->PSRun > 0.0) ? T->PSXFactor / T->PSRun : 0.0);
+ 
+@@ -1804,8 +1802,8 @@ int MStatBuildGrid(
+ 
+     case stMaxXFactor:
+ 
+-      sprintf(Buffer,"%s%-26s %8.4f\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "%-26s %8.4f\n",
+         "Overall Max XFactor:",
+         (double)T->MaxXFactor);
+ 
+@@ -1813,8 +1811,8 @@ int MStatBuildGrid(
+ 
+     case stAvgQTime:
+ 
+-      sprintf(Buffer,"%s%-26s %8.4f\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "%-26s %8.4f\n",
+         "Job Weighted QueueTime:",
+         (T->Count > 0) ? (double)T->TotalQTS / T->Count / 3600.0 : 0.0);
+ 
+@@ -1822,8 +1820,8 @@ int MStatBuildGrid(
+ 
+     case stAvgBypass:
+ 
+-      sprintf(Buffer,"%s%-26s %8.4f\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "%-26s %8.4f\n",
+         "Job Weighted X Bypass:",
+         (T->Count > 0) ? (double)T->Bypass / T->Count : 0.0);
+ 
+@@ -1831,8 +1829,8 @@ int MStatBuildGrid(
+ 
+     case stMaxBypass:
+ 
+-      sprintf(Buffer,"%s%-26s %8d\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "%-26s %8d\n",
+         "Overall Max Bypass:",
+         T->MaxBypass);
+ 
+@@ -1840,8 +1838,8 @@ int MStatBuildGrid(
+ 
+     case stJobCount:
+ 
+-      sprintf(Buffer,"%s%-26s %8d\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "%-26s %8d\n",
+         "Total Jobs:",
+         T->Count);
+ 
+@@ -1849,8 +1847,8 @@ int MStatBuildGrid(
+ 
+     case stPSRequest:
+ 
+-      sprintf(Buffer,"%s%-26s %8.2f\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "%-26s %8.2f\n",
+         "Total PH Requested:",
+         (double)T->PSRequest / 3600.0);
+     
+@@ -1858,8 +1856,8 @@ int MStatBuildGrid(
+ 
+     case stPSRun:
+ 
+-      sprintf(Buffer,"%s%-26s %8.2f\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "%-26s %8.2f\n",
+         "Total PH Run",
+         (double)T->PSRun / 3600.0);
+     
+@@ -1867,8 +1865,8 @@ int MStatBuildGrid(
+ 
+     case stWCAccuracy:
+ 
+-      sprintf(Buffer,"%s%-26s %8.3f\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "%-26s %8.3f\n",
+         "Overall WallClock Accuracy:",
+         (T->PSRequest > 0.0) ? (double)T->PSRun / T->PSRequest * 100.0 : 0.0);
+ 
+@@ -1876,8 +1874,8 @@ int MStatBuildGrid(
+ 
+     case stBFCount:
+ 
+-      sprintf(Buffer,"%s%-26s %8.4f (%d / %d)\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "%-26s %8.4f (%d / %d)\n",
+         "Job Weighted BackFill Job Percent:",
+         (double)T->BFCount / T->Count * 100.0,
+         T->BFCount,
+@@ -1887,8 +1885,8 @@ int MStatBuildGrid(
+ 
+     case stBFPSRun:
+ 
+-      sprintf(Buffer,"%s%-26s %8.4f (%6.2f / %6.2f)\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "%-26s %8.4f (%6.2f / %6.2f)\n",
+         "PS Weighted BackFill PS Percent:",
+         T->BFPSRun / T->PSRun * 100.0,
+         T->BFPSRun,
+@@ -1898,8 +1896,8 @@ int MStatBuildGrid(
+ 
+     case stJobEfficiency:
+ 
+-      sprintf(Buffer,"%s%-26s %8.4f (%6.2f / %6.2f)\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "%-26s %8.4f (%6.2f / %6.2f)\n",
+         "PS Weighted Job Efficiency Percent:",
+         (T->PSDedicated > 0.0) ? T->PSUtilized / T->PSDedicated * 100.0 : 0.0,
+         T->PSUtilized / 3600.0,
+@@ -1909,8 +1907,8 @@ int MStatBuildGrid(
+ 
+     case stQOSDelivered:
+ 
+-      sprintf(Buffer,"%s%-26s %8.4f (%d / %d)\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "%-26s %8.4f (%d / %d)\n",
+         "Job Weighted QOS Success Rate:",
+         (T->Count > 0) ? (double)T->QOSMet / T->Count * 100.0 : 0.0,
+         T->QOSMet,
+@@ -1920,8 +1918,8 @@ int MStatBuildGrid(
+ 
+     default:
+ 
+-      sprintf(Buffer,"%sERROR:  stat type %d totals not handled\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "ERROR:  stat type %d totals not handled\n",
+         SIndex);
+ 
+       break;
+@@ -1929,8 +1927,8 @@ int MStatBuildGrid(
+ 
+   DBG(4,fSTAT) DPrint("INFO:     buildgrid() complete\n");
+ 
+-  sprintf(Buffer,"%s%-26s %8d\n",
+-    Buffer,
++  sprintf(Buffer + strlen(Buffer),
++    "%-26s %8d\n",
+     "Total Samples:",
+     T->Count);
+ 
+diff --git a/src/moab/MSys.c b/src/moab/MSys.c
+index 35d462b..05a300d 100644
+--- a/src/moab/MSys.c
++++ b/src/moab/MSys.c
+@@ -2815,8 +2815,8 @@ int MSysDiagnose(
+ 
+   SBuf[0] = '\0';
+ 
+-  sprintf(SBuf,"%sInitialized: S:%s/I:%s  CCount: %d  FCount: %d  QCount: %d  JCount: %d  RCount: %d\n",
+-    SBuf,
++  sprintf(SBuf + strlen(SBuf),
++    "Initialized: S:%s/I:%s  CCount: %d  FCount: %d  QCount: %d  JCount: %d  RCount: %d\n",
+     (MSched.G.SIsInitialized == TRUE) ? "TRUE" : "FALSE",
+     (MSched.G.IIsInitialized == TRUE) ? "TRUE" : "FALSE",
+     MSched.G.CCount,
+@@ -2827,14 +2827,13 @@ int MSysDiagnose(
+ 
+   if (MSim.StopIteration == MSched.Iteration)
+     {
+-    sprintf(SBuf,"%s\nNOTE:  scheduler is currently stopped\n",
+-      SBuf);
++    strcat(SBuf, "\nNOTE:  scheduler is currently stopped\n");
+     }
+ 
+   if (MSched.G.Messages != NULL)
+     {
+-    sprintf(SBuf,"%s\nMessages:\n  %s\n",
+-      SBuf,
++    sprintf(SBuf + strlen(SBuf),
++      "\nMessages:\n  %s\n",
+       MSched.G.Messages);
+     }
+ 
+diff --git a/src/moab/MTrace.c b/src/moab/MTrace.c
+index 4b7f0d9..745c0ae 100644
+--- a/src/moab/MTrace.c
++++ b/src/moab/MTrace.c
+@@ -585,8 +585,8 @@ int MTraceBuildResource(
+       for (cindex = 1;cindex < MAX_MCLASS;cindex++)
+         {
+         if (N->CRes.PSlot[cindex].count > 0) 
+-          sprintf(Classes,"%s[%s:%d]",
+-            Classes,
++          sprintf(Classes + strlen(Classes),
++            "[%s:%d]",
+             MAList[eClass][cindex],
+             N->CRes.PSlot[cindex].count);
+         }  /* END for (cindex) */
+diff --git a/src/moab/MUH.c b/src/moab/MUH.c
+index bf8cab0..8ea3e1a 100644
+--- a/src/moab/MUH.c
++++ b/src/moab/MUH.c
+@@ -195,20 +195,15 @@ int UHSendResponse(
+   /* create header */
+ 
+   sprintf(tmpHeader,"HTTP/1.0 200 OK\r\n");
+-  sprintf(tmpHeader,"%sServer: Moab/3.0.7\r\n",
+-    tmpHeader);
++  strcat(tmpHeader, "Server: Moab/3.0.7\r\n");
+ /*
+-  sprintf(tmpHeader,"%sConnection: close\r\n",
+-    tmpHeader);
++  strcat(tmpHeader,"Connection: close\r\n")
+ */
+-  sprintf(tmpHeader,"%sDate: Tue, 22 May 2001 17:54:00 GMT\r\n",
+-    tmpHeader);
+-  sprintf(tmpHeader,"%sLast-Modified: Tue, 22 May 2001 13:59:59 GMT\r\n",
+-    tmpHeader);
+-  sprintf(tmpHeader,"%sContent-Type: text/html\r\n",
+-    tmpHeader);
+-  sprintf(tmpHeader,"%sContent-Length: %d\r\n",
+-    tmpHeader,
++  strcat(tmpHeader,"Date: Tue, 22 May 2001 17:54:00 GMT\r\n");
++  strcat(tmpHeader,"Last-Modified: Tue, 22 May 2001 13:59:59 GMT\r\n");
++  strcat(tmpHeader,"Content-Type: text/html\r\n");
++  sprintf(tmpHeader + strlen(tmpHeader),
++    "Content-Length: %d\r\n",
+     strlen(tmpBody));
+   strcat(tmpHeader,"\r\n");
+ 
+@@ -246,17 +241,14 @@ int UHSendFailure(
+   /* create header */
+  
+   sprintf(tmpHeader,"HTTP/1.0 200 OK\r\n");
+-  sprintf(tmpHeader,"%sServer: Moab/%s\r\n",
+-    tmpHeader,
++  sprintf(tmpHeader + strlen(tmpHeader),
++    "Server: Moab/%s\r\n",
+     MSCHED_VERSION);
+-  sprintf(tmpHeader,"%sDate: Tue, 22 May 2001 17:54:00 GMT\r\n",
+-    tmpHeader);
+-  sprintf(tmpHeader,"%sLast-Modified: Tue, 22 May 2001 13:59:59 GMT\r\n",
+-    tmpHeader);
+-  sprintf(tmpHeader,"%sContent-Type: text/html\r\n",
+-    tmpHeader);
+-  sprintf(tmpHeader,"%sContent-Length: %d\r\n",
+-    tmpHeader,
++  strcat(tmpHeader,"Date: Tue, 22 May 2001 17:54:00 GMT\r\n");
++  strcat(tmpHeader,"Last-Modified: Tue, 22 May 2001 13:59:59 GMT\r\n");
++  strcat(tmpHeader,"Content-Type: text/html\r\n");
++  sprintf(tmpHeader + strlen(tmpHeader),
++    "Content-Length: %d\r\n",
+     strlen(tmpBody));
+   strcat(tmpHeader,"\r\n");
+  
+diff --git a/src/moab/MUI.c b/src/moab/MUI.c
+index 878ea51..e89c177 100644
+--- a/src/moab/MUI.c
++++ b/src/moab/MUI.c
+@@ -197,8 +197,8 @@ int UIFormatShowAllJobs(
+  
+   strcpy(DstBuffer,"ACTIVE JOBS--------------------\n");
+  
+-  sprintf(DstBuffer,"%s%18s %8s %10s %5s %11s %20s\n\n",
+-    DstBuffer,
++  sprintf(DstBuffer + strlen(DstBuffer),
++    "%18s %8s %10s %5s %11s %20s\n\n",
+     "JOBNAME",
+     "USERNAME",
+     "STATE",
+@@ -236,8 +236,8 @@ int UIFormatShowAllJobs(
+  
+     /* display job */
+  
+-    sprintf(DstBuffer,"%s%18s %8s %10s %5d %11s  %19s",
+-      DstBuffer,
++    sprintf(DstBuffer + strlen(DstBuffer),
++      "%18s %8s %10s %5d %11s  %19s",
+       name,
+       UserName,
+       MJobState[state],
+@@ -250,8 +250,8 @@ int UIFormatShowAllJobs(
+     acount,
+     (acount == 1) ? ' ' : 's');
+  
+-  sprintf(DstBuffer,"%s\n%21s %4d of %4d Processors Active (%.2f%c)\n",
+-    DstBuffer,
++  sprintf(DstBuffer + strlen(DstBuffer),
++    "\n%21s %4d of %4d Processors Active (%.2f%c)\n",
+     tmp, 
+     BusyProcs,
+     UpProcs,
+@@ -260,8 +260,8 @@ int UIFormatShowAllJobs(
+  
+   if (UpProcs != UpNodes)
+     {
+-    sprintf(DstBuffer,"%s%21s %4d of %4d Nodes Active      (%.2f%c)\n",
+-      DstBuffer,
++    sprintf(DstBuffer + strlen(DstBuffer),
++      "%21s %4d of %4d Nodes Active      (%.2f%c)\n",
+       " ",
+       BusyNodes,
+       UpNodes,
+@@ -273,8 +273,8 @@ int UIFormatShowAllJobs(
+  
+   strcat(DstBuffer,"\nIDLE JOBS----------------------\n");
+  
+-  sprintf(DstBuffer,"%s%18s %8s %10s %5s %11s %20s\n\n",
+-    DstBuffer,
++  sprintf(DstBuffer + strlen(DstBuffer),
++    "%18s %8s %10s %5s %11s %20s\n\n",
+     "JOBNAME",
+     "USERNAME",
+     "STATE",
+@@ -329,8 +329,8 @@ int UIFormatShowAllJobs(
+  
+   strcat(DstBuffer,"\nBLOCKED JOBS-------------------\n");
+  
+-  sprintf(DstBuffer,"%s%18s %8s %10s %5s %11s %20s\n\n",
+-    DstBuffer,
++  sprintf(DstBuffer + strlen(DstBuffer),
++    "%18s %8s %10s %5s %11s %20s\n\n",
+     "JOBNAME",
+     "USERNAME",
+     "STATE",
+@@ -370,8 +370,8 @@ int UIFormatShowAllJobs(
+  
+     /* display job */
+  
+-    sprintf(DstBuffer,"%s%18s %8s %10s %5d %11s  %19s",
+-      DstBuffer,
++    sprintf(DstBuffer + strlen(DstBuffer),
++      "%18s %8s %10s %5d %11s  %19s",
+       name,
+       UserName,
+       MJobState[state],
+@@ -380,8 +380,8 @@ int UIFormatShowAllJobs(
+       MULToDString((mulong *)&qtime));
+     }  /* END while (ptr) */
+  
+-  sprintf(DstBuffer,"%s\nTotal Jobs: %d   Active Jobs: %d   Idle Jobs: %d   Non-Queued Jobs: %d\n",
+-    DstBuffer,
++  sprintf(DstBuffer + strlen(DstBuffer),
++    "\nTotal Jobs: %d   Active Jobs: %d   Idle Jobs: %d   Non-Queued Jobs: %d\n",
+     count,
+     acount,
+     icount,
+@@ -389,8 +389,8 @@ int UIFormatShowAllJobs(
+  
+   while ((ptr = MUStrTok(NULL,"\n",&TokPtr)) != NULL)
+     {
+-    sprintf(DstBuffer,"%s\n%s\n",
+-      DstBuffer,
++    sprintf(DstBuffer + strlen(DstBuffer),
++      "\n%s\n",
+       ptr);
+     }
+  
+@@ -477,8 +477,8 @@ int UIFormatHShowAllJobs(
+       {
+       strcat(DstBuffer,"<TABLE BORDER=1>");
+  
+-      sprintf(DstBuffer,"%s<TR><TD><B>%s</B></TD><TD><B>%s</B></TD><TD><B>%s</B></TD><TD><B>%s</B></TD><TD><B>%s</B></TD><TD><B>%s</B></TD></TR>",
+-        DstBuffer,
++      sprintf(DstBuffer + strlen(DstBuffer),
++        "<TR><TD><B>%s</B></TD><TD><B>%s</B></TD><TD><B>%s</B></TD><TD><B>%s</B></TD><TD><B>%s</B></TD><TD><B>%s</B></TD></TR>",
+         "Active Jobs",
+         "User Name",
+         "Job State",
+@@ -508,8 +508,8 @@ int UIFormatHShowAllJobs(
+  
+     /* display job */
+ 
+-    sprintf(DstBuffer,"%s<TR><TD>%s</TD><TD>%s</TD><TD>%s</TD><TD>%d</TD><TD>%s</TD><TD>%s</TD></TR>",  
+-      DstBuffer,
++    sprintf(DstBuffer + strlen(DstBuffer),
++      "<TR><TD>%s</TD><TD>%s</TD><TD>%s</TD><TD>%d</TD><TD>%s</TD><TD>%s</TD></TR>",  
+       name,
+       UserName,
+       MJobState[state],
+@@ -522,13 +522,13 @@ int UIFormatHShowAllJobs(
+     {
+     strcat(DstBuffer,"</TABLE><p>");
+  
+-    sprintf(DstBuffer,"%s%d Active Job%c<br>",
+-      DstBuffer,
++    sprintf(DstBuffer + strlen(DstBuffer),
++      "%d Active Job%c<br>",
+       acount,
+       (acount == 1) ? ' ' : 's');
+  
+-    sprintf(DstBuffer,"%s%d of %d Processors Active (%.2f%c)<br>",
+-      DstBuffer,
++    sprintf(DstBuffer + strlen(DstBuffer),
++      "%d of %d Processors Active (%.2f%c)<br>",
+       BusyProcs,
+       UpProcs,
+       (UpProcs > 0) ? (double)BusyProcs / UpProcs * 100.0 : 0.0,
+@@ -536,8 +536,8 @@ int UIFormatHShowAllJobs(
+  
+     if (UpProcs != UpNodes)
+       {
+-      sprintf(DstBuffer,"%s%d of %d Nodes Active (%.2f%c)<br>",
+-        DstBuffer,
++      sprintf(DstBuffer + strlen(DstBuffer),
++	"%d of %d Nodes Active (%.2f%c)<br>",
+         BusyNodes,
+         UpNodes,
+         (UpNodes > 0) ? (double)BusyNodes / UpNodes * 100.0 : 0.0,
+@@ -560,8 +560,8 @@ int UIFormatHShowAllJobs(
+       {
+       strcat(DstBuffer,"<TABLE BORDER=1>");
+ 
+-      sprintf(DstBuffer,"%s<TR><TD><B>%s</B></TD><TD><B>%s</B></TD><TD><B>%s</B></TD><TD><B>%s</B></TD><TD><B>%s</B></TD><TD><B>%s</B></TD></TR>", 
+-        DstBuffer,
++      sprintf(DstBuffer + strlen(DstBuffer),
++	"<TR><TD><B>%s</B></TD><TD><B>%s</B></TD><TD><B>%s</B></TD><TD><B>%s</B></TD><TD><B>%s</B></TD><TD><B>%s</B></TD></TR>", 
+         "Idle Jobs",
+         "User Name",
+         "Job State",
+@@ -591,8 +591,8 @@ int UIFormatHShowAllJobs(
+  
+     /* display job */
+ 
+-    sprintf(DstBuffer,"%s<TR><TD>%s</TD><TD>%s</TD><TD>%s</TD><TD>%d</TD><TD>%s</TD><TD>%s</TD></TR>",      
+-      DstBuffer,
++    sprintf(DstBuffer + strlen(DstBuffer),
++      "<TR><TD>%s</TD><TD>%s</TD><TD>%s</TD><TD>%d</TD><TD>%s</TD><TD>%s</TD></TR>",      
+       name,
+       UserName,
+       MJobState[state],
+@@ -605,8 +605,8 @@ int UIFormatHShowAllJobs(
+     {
+     strcat(DstBuffer,"</TABLE><p>"); 
+ 
+-    sprintf(DstBuffer,"%s%d Idle Job%c<p>",
+-      DstBuffer,
++    sprintf(DstBuffer + strlen(DstBuffer),
++      "%d Idle Job%c<p>",
+       icount,
+       (icount == 1) ? ' ' : 's');
+     }
+@@ -626,8 +626,8 @@ int UIFormatHShowAllJobs(
+       {
+       strcat(DstBuffer,"<TABLE BORDER=1>");
+ 
+-      sprintf(DstBuffer,"%s<TR><TD><B>%s</B></TD><TD><B>%s</B></TD><TD><B>%s</B></TD><TD><B>%s</B></TD><TD><B>%s</B></TD><TD><B>%s</B></TD><TD><B>%s</B></TD></TR>", 
+-        DstBuffer,
++      sprintf(DstBuffer + strlen(DstBuffer),
++	"<TR><TD><B>%s</B></TD><TD><B>%s</B></TD><TD><B>%s</B></TD><TD><B>%s</B></TD><TD><B>%s</B></TD><TD><B>%s</B></TD><TD><B>%s</B></TD></TR>", 
+         "Ineligible Jobs",
+         "User Name",
+         "Job State",
+@@ -658,8 +658,8 @@ int UIFormatHShowAllJobs(
+  
+     /* display job */
+ 
+-   sprintf(DstBuffer,"%s<TR><TD>%s</TD><TD>%s</TD><TD>%s</TD><TD>%d</TD><TD>%s</TD><TD>%s</TD><TD>%s</TD></TR>",    
+-      DstBuffer,
++   sprintf(DstBuffer + strlen(DstBuffer),
++     "<TR><TD>%s</TD><TD>%s</TD><TD>%s</TD><TD>%d</TD><TD>%s</TD><TD>%s</TD><TD>%s</TD></TR>",    
+       name,
+       UserName,
+       MJobState[state],
+@@ -674,8 +674,8 @@ int UIFormatHShowAllJobs(
+     strcat(DstBuffer,"</TABLE><p>");     
+     }
+  
+-  sprintf(DstBuffer,"%s<p>Total Jobs: %d &nbsp; Active Jobs: %d &nbsp; Idle Jobs: %d &nbsp; Ineligible Jobs: %d<p>",
+-    DstBuffer,
++  sprintf(DstBuffer + strlen(DstBuffer),
++    "<p>Total Jobs: %d &nbsp; Active Jobs: %d &nbsp; Idle Jobs: %d &nbsp; Ineligible Jobs: %d<p>",
+     count,
+     acount,
+     icount,
+@@ -683,8 +683,8 @@ int UIFormatHShowAllJobs(
+  
+   while ((ptr = MUStrTok(NULL,"\n",&TokPtr)) != NULL)
+     {
+-    sprintf(DstBuffer,"%s<p>%s<p>",
+-      DstBuffer,
++    sprintf(DstBuffer + strlen(DstBuffer),
++      "<p>%s<p>",
+       ptr);
+     }
+ 
+diff --git a/src/moab/MUtil.c b/src/moab/MUtil.c
+index 2d543c6..adf7e9d 100644
+--- a/src/moab/MUtil.c
++++ b/src/moab/MUtil.c
+@@ -1181,8 +1181,8 @@ char *MUListAttrs(
+     {
+     if ((Value & (1 << i)) && (MAList[Attr][i][0] != '\0'))
+       {
+-      sprintf(Line,"%s[%s]",
+-        Line,
++      sprintf(Line + strlen(Line),
++        "[%s]",
+         MAList[Attr][i]);
+       }
+     }    /* for (i) */
+@@ -1221,8 +1221,8 @@ char *MUMAList(
+       if ((ValueMap[findex] & (1 << index)) && 
+           (MAList[AttrIndex][index][0] != '\0'))
+         {
+-        sprintf(Line,"%s[%s]",
+-          Line,
++        sprintf(Line + strlen(Line),
++          "[%s]",
+           MAList[AttrIndex][index + findex * MINTBITS]);
+         }
+       }    /* END for (index) */
+@@ -1374,8 +1374,8 @@ char *MUCAListToString(
+       if ((CClass[cindex].count > 0) || 
+           (AClass[cindex].count > 0)) 
+         {
+-        sprintf(ptr,"%s[%s %d:%d]",
+-          ptr,
++        sprintf(ptr + strlen(ptr),
++          "[%s %d:%d]",
+           MAList[eClass][cindex],
+           AClass[cindex].count,
+           CClass[cindex].count); 
+@@ -1385,8 +1385,8 @@ char *MUCAListToString(
+       {
+       if (AClass[cindex].count > 0) 
+         {
+-        sprintf(ptr,"%s[%s %d]",
+-          ptr,
++        sprintf(ptr + strlen(ptr),
++          "[%s %d]",
+           MAList[eClass][cindex],
+           AClass[cindex].count);
+         }
+@@ -2060,8 +2060,8 @@ char *MUCResToString(
+         {
+         /* human readable - percent */
+ 
+-        sprintf(Line,"%s%s: %0.2lf",
+-          Line,
++        sprintf(Line + strlen(Line),
++          "%s: %0.2lf",
+           N,
+           (double)tmpI / 100.0);
+         }
+@@ -2069,8 +2069,8 @@ char *MUCResToString(
+         {
+         /* machine readable */
+ 
+-        sprintf(Line,"%s%s=%d",
+-          Line,
++        sprintf(Line + strlen(Line),
++          "%s=%d",
+           N,
+           tmpI);
+         }
+@@ -2080,15 +2080,15 @@ char *MUCResToString(
+ 
+         if (index > 0)
+           {
+-          sprintf(Line,"%s%s: %s",
+-            Line,
++          sprintf(Line + strlen(Line),
++            "%s: %s",
+             N,
+             MULToRSpec((long)tmpI,mvmMega,NULL));
+           }
+         else
+           {
+-          sprintf(Line,"%s%s: %d",
+-            Line,
++          sprintf(Line + strlen(Line),
++            "%s: %d",
+             N,
+             tmpI);
+           }
+@@ -2098,15 +2098,15 @@ char *MUCResToString(
+       {
+       if (DisplayMode == 2)
+         {
+-        sprintf(Line,"%s%s=%s",
+-          Line,
++        sprintf(Line + strlen(Line),
++          "%s=%s",
+           N,
+           ALL);
+         }
+       else
+         {
+-        sprintf(Line,"%s%s: %s",
+-          Line,
++        sprintf(Line + strlen(Line),
++          "%s: %s",
+           N,
+           ALL);
+         }
+@@ -2123,8 +2123,8 @@ char *MUCResToString(
+     if (Line[0] != '\0')
+       MUStrCat(Line,"  ",MAX_MLINE);
+ 
+-    sprintf(Line,"%s%s: %d",
+-      Line,
++    sprintf(Line + strlen(Line),
++      "%s: %d",
+       MAList[eGRes][index],
+       R->GRes[index].count);
+     }  /* END for (index) */
+@@ -2514,8 +2514,8 @@ int MUREToList(
+  
+             if (Buffer != NULL)
+               {
+-              sprintf(Buffer,"%snode '%s' found\n",
+-                Buffer,
++              sprintf(Buffer + strlen(Buffer),
++                "node '%s' found\n",
+                 N->Name);
+               }
+  
+@@ -2550,8 +2550,8 @@ int MUREToList(
+  
+             if (Buffer != NULL)
+               {
+-              sprintf(Buffer,"%snode '%s' found\n",
+-                Buffer,
++              sprintf(Buffer + strlen(Buffer),
++                "node '%s' found\n",
+                 N->Name);
+               }
+             }
+@@ -2597,8 +2597,7 @@ int MUREToList(
+  
+         if (Buffer != NULL)
+           {
+-          sprintf(Buffer,"%sERROR:    no matches found for node expression\n",
+-            Buffer);
++          strcat(Buffer, "ERROR:    no matches found for node expression\n");
+           }
+  
+         return(FAILURE);
+@@ -2636,8 +2635,8 @@ int MUREToList(
+  
+             if (Buffer != NULL)
+               {
+-              sprintf(Buffer,"%sjob '%s' found\n",
+-                Buffer,
++              sprintf(Buffer + strlen(Buffer),
++                "job '%s' found\n",
+                 J->Name);
+               }
+             }
+@@ -2681,8 +2680,7 @@ int MUREToList(
+  
+         if (Buffer != NULL)
+           {
+-          sprintf(Buffer,"%sERROR:    no matches found for job expression\n",
+-            Buffer);
++          strcat(Buffer, "ERROR:    no matches found for job expression\n");
+           }
+  
+         return(FAILURE);
+@@ -2722,8 +2720,8 @@ int MUREToList(
+ 
+             if (Buffer != NULL)
+               {
+-              sprintf(Buffer,"%sres '%s' found\n",
+-                Buffer,
++              sprintf(Buffer + strlen(Buffer),
++                "res '%s' found\n",
+                 R->Name);
+               }
+             }
+@@ -2767,8 +2765,7 @@ int MUREToList(
+ 
+         if (Buffer != NULL)
+           {
+-          sprintf(Buffer,"%sERROR:    no matches found for job expression\n",
+-            Buffer);
++          strcat(Buffer, "ERROR:    no matches found for job expression\n");
+           }
+ 
+         return(FAILURE);
+@@ -4235,8 +4232,8 @@ char *MUBMToString(
+       {
+       if (Delim == '[')
+         {
+-        sprintf(ptr,"%s[%s]",
+-          ptr,
++        sprintf(ptr + strlen(ptr),
++          "[%s]",
+           AList[i]);
+         }
+       else
+@@ -4531,8 +4528,8 @@ char *MUCResRatioToString(
+       if (Line[0] != '\0')
+         MUStrCat(Line,"  ",sizeof(Line));
+ 
+-      sprintf(Line,"%s%s: %d/%d (%.2f%c)",
+-        Line,
++      sprintf(Line + strlen(Line),
++        "%s: %d/%d (%.2f%c)",
+         N,
+         BVal,
+         TotalRes,
+@@ -4834,8 +4831,8 @@ int MUShowSSArray(
+   char       *Buffer)    /* I/O */
+  
+   { 
+-  sprintf(Buffer,"%s%s[%s]%-.*s  %s\n",
+-    Buffer,
++  sprintf(Buffer + strlen(Buffer),
++    "%s[%s]%-.*s  %s\n",
+     Param,
+     IndexName,
+     MCFG_HDR_LEN - 2 - (int)(strlen(Param) + strlen(IndexName)),
+@@ -5543,8 +5540,8 @@ char *MUMAToString(
+           {
+           if (Line[0] != '\0')
+             {
+-            sprintf(Line,"%s%c%s",
+-              Line,
++            sprintf(Line + strlen(Line),
++              "%c%s",
+               Delim,
+               ptr);
+             }
+@@ -5555,8 +5552,8 @@ char *MUMAToString(
+           }
+         else
+           {
+-          sprintf(Line,"%s[%s]",
+-            Line,
++          sprintf(Line + strlen(Line),
++            "[%s]",
+             ptr);
+           }
+         }
+diff --git a/src/server/LLI.c b/src/server/LLI.c
+index 526aa5d..bea6638 100644
+--- a/src/server/LLI.c
++++ b/src/server/LLI.c
+@@ -1857,8 +1857,8 @@ int MLLJobLoad(
+       {
+       strncpy(DValue,J->Name,ptr - J->Name);
+ 
+-      sprintf(DValue,"%s%d",
+-        DValue,
++      sprintf(DValue + strlen(DValue),
++        "%d",
+         SIndex - 1);
+ 
+       MJobSetDependency(J,mjdJobCompletion,DValue);
+diff --git a/src/server/OUserI.c b/src/server/OUserI.c
+index 4fe739b..e7d5d6c 100644
+--- a/src/server/OUserI.c
++++ b/src/server/OUserI.c
+@@ -431,8 +431,8 @@ int UIProcessCommand(
+ 
+       Align = (int)strlen(S->SBuffer) + (int)strlen(MCKeyword[mckArgs]);
+ 
+-      sprintf(S->SBuffer,"%s%*s%s",
+-        S->SBuffer,
++      sprintf(S->SBuffer + strlen(S->SBuffer),
++        "%*s%s",
+ 	16 - (Align % 16), 
+ 	" ",
+         MCKeyword[mckArgs]);
+@@ -874,15 +874,15 @@ int ShowBackfillWindow(
+             {
+             if ((strcmp(CurrentPName,GLOBAL_MPARNAME)) && (index == 0))
+               {
+-              sprintf(Buffer,"%sno %s available\n",
+-                Buffer,
++              sprintf(Buffer + strlen(Buffer),
++                "no %s available\n",
+                 (MSched.DisplayFlags & (1 << dfNodeCentric)) ? "nodes" : "procs");
+               }
+ 
+             strcpy(CurrentPName,P->Name);
+ 
+-            sprintf(Buffer,"%s\npartition %s:\n",
+-              Buffer,
++            sprintf(Buffer + strlen(Buffer),
++              "\npartition %s:\n",
+               P->Name);
+ 
+             index = 0;
+@@ -894,21 +894,20 @@ int ShowBackfillWindow(
+ 
+             if (BFNodeCount == 0)
+               {
+-              sprintf(Buffer,"%sno nodes available\n",
+-                Buffer);
++              strcat(Buffer,"no nodes available\n");
+               }
+             else if (BFTime < 100000000)
+               {
+-              sprintf(Buffer,"%s%3d node%s available for   %11s\n",
+-                Buffer,
++              sprintf(Buffer + strlen(Buffer),
++                "%3d node%s available for   %11s\n",
+                 BFNodeCount,
+                 (BFNodeCount > 1) ? "s" : "",
+                 MULToTString(BFTime));
+               }
+             else
+               {
+-              sprintf(Buffer,"%s%3d node%s available with no timelimit\n",
+-                Buffer,
++              sprintf(Buffer + strlen(Buffer),
++               	"%3d node%s available with no timelimit\n",
+                 BFNodeCount,
+                 (BFNodeCount > 1) ? "s" : "");
+               }
+@@ -919,21 +918,20 @@ int ShowBackfillWindow(
+ 
+             if (BFProcCount == 0)
+               {
+-              sprintf(Buffer,"%sno procs available\n",
+-                Buffer);
++              strcat(Buffer,"no procs available\n");
+               }
+             else if (BFTime < 100000000)
+               {
+-              sprintf(Buffer,"%s%3d proc%s available for   %11s\n",
+-                Buffer,
++              sprintf(Buffer + strlen(Buffer),
++                "%3d proc%s available for   %11s\n",
+                 BFProcCount,
+                 (BFProcCount > 1) ? "s" : "",
+                 MULToTString(BFTime));
+               }
+             else
+               {
+-              sprintf(Buffer,"%s%3d proc%s available with no timelimit\n",
+-                Buffer,
++              sprintf(Buffer + strlen(Buffer),
++               	"%3d proc%s available with no timelimit\n",
+                 BFProcCount,
+                 (BFProcCount > 1) ? "s" : "");
+               }
+@@ -954,8 +952,7 @@ int ShowBackfillWindow(
+ 
+     if (index == 0)
+       {
+-      sprintf(Buffer,"%sno procs available\n",
+-        Buffer);
++      strcat(Buffer,"no procs available\n");
+       }
+ 
+     strcat(Buffer,"\n\n");
+@@ -998,8 +995,8 @@ int ShowBackfillWindow(
+ 
+     MJobBuildCL(J);
+ 
+-    sprintf(Buffer,"%s%20s %5s %6s %7s %7s   %14s\n",
+-      Buffer,
++    sprintf(Buffer + strlen(Buffer),
++      "%20s %5s %6s %7s %7s   %14s\n",
+       "HostName",
+       "Procs",
+       "Memory",
+@@ -1007,8 +1004,8 @@ int ShowBackfillWindow(
+       "Swap",
+       "Time Available");
+ 
+-    sprintf(Buffer,"%s%20s %5s %6s %7s %7s   %14s\n",
+-      Buffer,
++    sprintf(Buffer + strlen(Buffer),
++      "%20s %5s %6s %7s %7s   %14s\n",
+       "----------",
+       "-----",
+       "------",
+@@ -1062,8 +1059,8 @@ int ShowBackfillWindow(
+             NodeHeaderPrinted = TRUE;
+             }
+ 
+-          sprintf(Buffer,"%s%20s %5d %6d %7d %7d   %14s\n",
+-            Buffer,
++          sprintf(Buffer + strlen(Buffer),
++            "%20s %5d %6d %7d %7d   %14s\n",
+             N->Name,
+             DRes.Procs,
+             DRes.Mem,
+@@ -1135,8 +1132,8 @@ int UINodeStatShow(
+ 
+   sprintf(Buffer,"Memory Requirement Breakdown:\n\n");
+ 
+-  sprintf(Buffer,"%s%8s %5s %7s %9s %7s %10s %7s\n",
+-    Buffer,
++  sprintf(Buffer + strlen(Buffer),
++    "%8s %5s %7s %9s %7s %10s %7s\n",
+     "Memory",
+     "Proc",
+     "Percent",
+@@ -1184,8 +1181,8 @@ int UINodeStatShow(
+       IAverage = (double)MRClass[cindex].InitialWorkload / MRClass[cindex].Nodes / averageload * 100.0;
+       }
+ 
+-    sprintf(Buffer,"%s%8d %5d %7.2f %9ld %7.2f %10ld %7.2f\n",
+-      Buffer,
++    sprintf(Buffer + strlen(Buffer),
++      "%8d %5d %7.2f %9ld %7.2f %10ld %7.2f\n",
+       MRClass[cindex].Memory,
+       MRClass[cindex].Nodes,
+       (double)MRClass[cindex].Nodes / totalnodes * 100.0,
+@@ -1195,8 +1192,8 @@ int UINodeStatShow(
+       Average);
+     }  /* END for (cindex) */
+ 
+-  sprintf(Buffer,"%s%8s %5d %7.2f %9d %7.2f %10d %7.2f\n\n",
+-    Buffer,
++  sprintf(Buffer + strlen(Buffer),
++    "%8s %5d %7.2f %9d %7.2f %10d %7.2f\n\n",
+     "TOTAL",
+     totalnodes,
+     100.0,
+@@ -1250,12 +1247,12 @@ int UINodeStatShow(
+ 
+           if (mode == 0)
+             {
+-            sprintf(Buffer,"%s%4dMB Nodes\n",
+-              Buffer,
++            sprintf(Buffer + strlen(Buffer),
++              "%4dMB Nodes\n",
+               mem);
+ 
+-            sprintf(Buffer,"%s%20s %9s %9s %9s\n",
+-              Buffer,
++            sprintf(Buffer + strlen(Buffer),
++              "%20s %9s %9s %9s\n",
+               "NodeName",
+               "Available",
+               "Busy",
+@@ -1280,8 +1277,8 @@ int UINodeStatShow(
+           {
+           if (N->SUTime != 0)
+             {
+-            sprintf(Buffer,"%s%20s %8.2f%s %8.2f%s %9s\n",
+-              Buffer,
++            sprintf(Buffer + strlen(Buffer),
++              "%20s %8.2f%s %8.2f%s %9s\n",
+               N->Name,
+               (double)N->SUTime / N->STTime * 100.0,
+               "%",
+@@ -1291,8 +1288,8 @@ int UINodeStatShow(
+             }
+           else
+             {
+-            sprintf(Buffer,"%s%20s %9.2f %9.2f %9s\n",
+-              Buffer,
++            sprintf(Buffer + strlen(Buffer),
++              "%20s %9.2f %9.2f %9s\n",
+               N->Name,
+               0.0,
+               0.0,
+@@ -1313,8 +1310,8 @@ int UINodeStatShow(
+ 
+     if (MemTotalNodeCount != 0)
+       {
+-      sprintf(Buffer,"%sSummary:  %3d %4dMB Nodes  %6.2f%s Avail  %6.2f%s Busy  (Current: %6.2f%s Avail  %6.2f%s Busy)\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "Summary:  %3d %4dMB Nodes  %6.2f%s Avail  %6.2f%s Busy  (Current: %6.2f%s Avail  %6.2f%s Busy)\n",
+         MemTotalNodeCount,
+         mem,
+         (double)MemTotalUpTime / MemTotalTotalTime * 100.0,
+@@ -1335,8 +1332,8 @@ int UINodeStatShow(
+ 
+   if (SystemTotalTotalTime != 0)
+     {
+-    sprintf(Buffer,"%sSystem Summary:  %3d Nodes  %6.2f%s Avail  %6.2f%s Busy  (Current: %6.2f%s Avail  %6.2f%s Busy)\n",
+-      Buffer,
++    sprintf(Buffer + strlen(Buffer),
++      "System Summary:  %3d Nodes  %6.2f%s Avail  %6.2f%s Busy  (Current: %6.2f%s Avail  %6.2f%s Busy)\n",
+       SystemTotalNodeCount,
+       (double)SystemTotalUpTime / SystemTotalTotalTime * 100.0,
+       "%",
+diff --git a/src/server/Server.c b/src/server/Server.c
+index a7abc45..40268d7 100644
+--- a/src/server/Server.c
++++ b/src/server/Server.c
+@@ -488,50 +488,54 @@ int MServerConfigShow(
+ 
+   /* display modules */
+ 
+-  sprintf(Buffer,"%s# SERVER MODULES: ",
+-    Buffer);
++  strcat(Buffer,"# SERVER MODULES: ");
+ 
+ #ifdef __MX
+-  sprintf(Buffer,"%s MX",
+-    Buffer);
++  strcat(Buffer," MX");
+ #endif /* __MX */
+ 
+ #ifdef __MMD5
+-  sprintf(Buffer,"%s MD5",
+-    Buffer);
++  strcat(Buffer," MD5");
+ #endif /* __MMD5 */
+ 
+-  sprintf(Buffer,"%s\n",
+-    Buffer);
++  strcat(Buffer,"\n");
+ 
+   /* display parameters */
+ 
+-  sprintf(Buffer,"%s%-30s  %s\n",
+-    Buffer,
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %s\n",
+     MParam[pSchedMode],
+     MSchedMode[MSched.Mode]); 
+ 
+   if ((VFlag || (PIndex == -1) || (PIndex == pServerName)))
+     {
+-    sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pServerName],MSched.Name);
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %s\n",MParam[pServerName],MSched.Name);
+     }
+  
+-  sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pServerHost],MSched.ServerHost);
+-  sprintf(Buffer,"%s%-30s  %d\n",Buffer,MParam[pServerPort],MSched.ServerPort);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %s\n",MParam[pServerHost],MSched.ServerHost);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %d\n",MParam[pServerPort],MSched.ServerPort);
+ 
+   if (MSched.LogFile[0] == '\0')
+     {
+-    sprintf(Buffer,"%s# NO LOGFILE SPECIFIED\n",Buffer);
+-    sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pSchedLogFile],MSched.LogFile);
++    strcat(Buffer,"# NO LOGFILE SPECIFIED\n");
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %s\n",MParam[pSchedLogFile],MSched.LogFile);
+     }
+   else
+     {
+-    sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pSchedLogFile],MSched.LogFile);
+-    sprintf(Buffer,"%s%-30s  %d\n",Buffer,MParam[pLogFileMaxSize],MSched.LogFileMaxSize);
+-    sprintf(Buffer,"%s%-30s  %d\n",Buffer,MParam[pLogFileRollDepth],MSched.LogFileRollDepth);
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %s\n",MParam[pSchedLogFile],MSched.LogFile);
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %d\n",MParam[pLogFileMaxSize],MSched.LogFileMaxSize);
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %d\n",MParam[pLogFileRollDepth],MSched.LogFileRollDepth);
+     }
+ 
+-  sprintf(Buffer,"%s%-30s  %d\n",Buffer,MParam[pLogLevel],mlog.Threshold);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %d\n",MParam[pLogLevel],mlog.Threshold);
+  
+   if ((mlog.FacilityList != fALL) || 
+       (VFlag || 
+@@ -554,47 +558,64 @@ int MServerConfigShow(
+     if (mlog.FacilityList == fALL)
+       strcpy(Line,MLogFacilityType[dfALL]);
+  
+-    sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pLogFacility],Line);
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %s\n",MParam[pLogFacility],Line);
+     }
+ 
+-  sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pMServerHomeDir],MSched.HomeDir);
+-  sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pSchedToolsDir],MSched.ToolsDir);
+-  sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pSchedLogDir],MSched.LogDir);
+-  sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pStatDir],MStat.StatDir);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %s\n",MParam[pMServerHomeDir],MSched.HomeDir);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %s\n",MParam[pSchedToolsDir],MSched.ToolsDir);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %s\n",MParam[pSchedLogDir],MSched.LogDir);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %s\n",MParam[pStatDir],MStat.StatDir);
+  
+-  sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pSchedLockFile],MSched.LockFile);
+-  sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pSchedConfigFile],MSched.ConfigFile);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %s\n",MParam[pSchedLockFile],MSched.LockFile);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %s\n",MParam[pSchedConfigFile],MSched.ConfigFile);
+ 
+   if ((MSched.Action[mactAdminEvent][0] != '\0') || VFlag)
+     { 
+-    sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pAdminEAction],MSched.Action[mactAdminEvent]);
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %s\n",MParam[pAdminEAction],MSched.Action[mactAdminEvent]);
+     }
+ 
+   if ((MSched.Action[mactJobFB][0] != '\0') || VFlag)
+     {
+-    sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[mcoJobFBAction],MSched.Action[mactJobFB]);
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %s\n",MParam[mcoJobFBAction],MSched.Action[mactJobFB]);
+     }
+ 
+   if ((MSched.Action[mactMail][0] != '\0') || VFlag)
+     {
+-    sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[mcoMailAction],MSched.Action[mactMail]);
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %s\n",MParam[mcoMailAction],MSched.Action[mactMail]);
+     }
+  
+-  sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pCheckPointFile],MCP.CPFileName);
+-  sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pCheckPointInterval],MULToTString(MCP.CPInterval));
+-  sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pCheckPointExpirationTime],MULToTString(MCP.CPExpirationTime));
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %s\n",MParam[pCheckPointFile],MCP.CPFileName);
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %s\n",MParam[pCheckPointInterval],MULToTString(MCP.CPInterval));
++  sprintf(Buffer + strlen(Buffer),
++    "%-30s  %s\n",MParam[pCheckPointExpirationTime],MULToTString(MCP.CPExpirationTime));
+ 
+   if ((MSched.MonitoredJob[0] != '\0') || (VFlag || (PIndex == -1) || (PIndex == pMonitoredJob)))
+-    sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pMonitoredJob],MSched.MonitoredJob);
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %s\n",MParam[pMonitoredJob],MSched.MonitoredJob);
+  
+   if ((MSched.MonitoredNode[0] != '\0') || (VFlag || (PIndex == -1) || (PIndex == pMonitoredNode)))
+-    sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pMonitoredNode],MSched.MonitoredNode);
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %s\n",MParam[pMonitoredNode],MSched.MonitoredNode);
+  
+   if ((MSched.MonitoredFunction[0] != '\0') || (VFlag || (PIndex == -1) || (PIndex == pMonitoredFunction)))
+-    sprintf(Buffer,"%s%-30s  %s\n",Buffer,MParam[pMonitoredFunction],MSched.MonitoredFunction);
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %s\n",MParam[pMonitoredFunction],MSched.MonitoredFunction);
+ 
+   if ((MSched.ResDepth != DEFAULT_RES_DEPTH) || (VFlag || (PIndex == -1) || (PIndex == pResDepth)))
+-    sprintf(Buffer,"%s%-30s  %d\n",Buffer,MParam[pResDepth],MSched.ResDepth);
++    sprintf(Buffer + strlen(Buffer),
++      "%-30s  %d\n",MParam[pResDepth],MSched.ResDepth);
+ 
+   strcat(Buffer,"\n");      
+ 
+diff --git a/src/server/UserI.c b/src/server/UserI.c
+index c409c28..e5ac864 100644
+--- a/src/server/UserI.c
++++ b/src/server/UserI.c
+@@ -988,8 +988,8 @@ int UIJobShow(
+       if (tindex > 0)
+         strcat(Line,",");
+  
+-      sprintf(Line,"%s %ld",
+-        Line,
++      sprintf(Line + strlen(Line),
++        " %ld",
+         J->SpecWCLimit[tindex]);
+       }  /* END for (tindex) */
+  
+@@ -1049,8 +1049,8 @@ int UIJobShow(
+         if (tindex > 0)
+           strcat(Line,",");
+  
+-        sprintf(Line,"%s %d",
+-          Line,
++        sprintf(Line + strlen(Line),
++          " %d",
+           RQ->TaskRequestList[tindex]);
+         }  /* END for (tindex) */
+  
+@@ -1883,8 +1883,8 @@ int UIJobShow(
+  
+         if (Flags & (1 << mcmVerbose))
+           {
+-          sprintf(MsgBuf,"%s%-24s rejected : %s\n",
+-            MsgBuf,
++          sprintf(MsgBuf + strlen(MsgBuf),
++            "%-24s rejected : %s\n",
+             N->Name,
+             MAllocRejType[marState]);
+           }
+@@ -1912,8 +1912,8 @@ int UIJobShow(
+  
+           if (Flags & (1 << mcmVerbose))
+             {
+-            sprintf(MsgBuf,"%s%-24s accepted : %d tasks supported\n",
+-              MsgBuf,
++            sprintf(MsgBuf + strlen(MsgBuf),
++              "%-24s accepted : %d tasks supported\n",
+               N->Name,
+               TasksAllowed);
+             }
+@@ -1924,8 +1924,8 @@ int UIJobShow(
+  
+           if (Flags & (1 << mcmVerbose))
+             {
+-            sprintf(MsgBuf,"%s%-24s rejected : %s\n",
+-              MsgBuf,
++            sprintf(MsgBuf + strlen(MsgBuf),
++              "%-24s rejected : %s\n",
+               N->Name,
+               MAllocRejType[rindex]); 
+             }
+@@ -2916,8 +2916,7 @@ int MUIGridCtl(
+             {
+             MACLClear(SR->ACL,maDuration);
+  
+-            sprintf(S->SBuffer,"%sMAXTIME set to DEFAULT\n",
+-              S->SBuffer);
++            strcat(S->SBuffer,"MAXTIME set to DEFAULT\n");
+             }
+           else
+             {
+@@ -2934,8 +2933,8 @@ int MUIGridCtl(
+               (1 << maclRequired),
+               0);
+  
+-            sprintf(S->SBuffer,"%sMAXTIME set to %ld\n",
+-              S->SBuffer,
++            sprintf(S->SBuffer + strlen(S->SBuffer),
++              "MAXTIME set to %ld\n",
+               MaxTime);
+             }
+           }
+@@ -2945,8 +2944,7 @@ int MUIGridCtl(
+             {
+             SR->Days = 0;
+  
+-            sprintf(S->SBuffer,"%sDAYS set to DEFAULT\n",
+-              S->SBuffer);
++            strcat(S->SBuffer,"DAYS set to DEFAULT\n");
+             }
+           else
+             {
+@@ -2964,8 +2962,8 @@ int MUIGridCtl(
+                 }
+               }   /* END for (vindex) */
+  
+-            sprintf(S->SBuffer,"%sDAYS set to %s\n",
+-              S->SBuffer,
++            sprintf(S->SBuffer + strlen(S->SBuffer),
++              "DAYS set to %s\n",
+               ptr + strlen("DAYS="));
+             }
+           }
+@@ -2975,15 +2973,14 @@ int MUIGridCtl(
+             {
+             SR->StartTime = 0;
+  
+-            sprintf(S->SBuffer,"%sSTARTTIME set to DEFAULT\n",
+-              S->SBuffer);
++            strcat(S->SBuffer,"STARTTIME set to DEFAULT\n");
+             }
+           else
+             {
+             SR->StartTime = MUTimeFromString(ptr + strlen("STARTTIME=")); 
+  
+-            sprintf(S->SBuffer,"%sSTARTTIME set to %s\n",
+-              S->SBuffer,
++            sprintf(S->SBuffer + strlen(S->SBuffer),
++              "STARTTIME set to %s\n",
+               MULToTString(SR->StartTime));
+             }
+           }
+@@ -2993,15 +2990,14 @@ int MUIGridCtl(
+             {
+             SR->EndTime = 0;
+  
+-            sprintf(S->SBuffer,"%sENDTIME set to DEFAULT\n",
+-              S->SBuffer);
++            strcat(S->SBuffer,"ENDTIME set to DEFAULT\n");
+             }
+           else
+             {
+             SR->EndTime = MUTimeFromString(ptr + strlen("ENDTIME="));
+  
+-            sprintf(S->SBuffer,"%sENDTIME set to %s\n",
+-              S->SBuffer,
++            sprintf(S->SBuffer + strlen(S->SBuffer),
++              "ENDTIME set to %s\n",
+               MULToTString(SR->EndTime));
+             }
+           }
+@@ -3011,15 +3007,14 @@ int MUIGridCtl(
+             {
+             SR->TaskCount = 0;
+  
+-            sprintf(S->SBuffer,"%sTASKCOUNT set to DEFAULT\n",
+-              S->SBuffer);
++            strcat(S->SBuffer,"TASKCOUNT set to DEFAULT\n");
+             }
+           else
+             {
+             SR->TaskCount = atoi(ptr + strlen("TASKCOUNT="));
+  
+-            sprintf(S->SBuffer,"%sTASKCOUNT set to %d\n",
+-              S->SBuffer,
++            sprintf(S->SBuffer + strlen(S->SBuffer),
++              "TASKCOUNT set to %d\n",
+               SR->TaskCount);
+             }
+           }
+@@ -3054,15 +3049,14 @@ int MUIGridCtl(
+             {
+             SR->A = NULL;
+  
+-            sprintf(S->SBuffer,"%sCHARGEACCOUNT set to DEFAULT\n",
+-              S->SBuffer);
++            strcat(S->SBuffer,"CHARGEACCOUNT set to DEFAULT\n");
+             }
+           else
+             {
+             MAcctAdd(ptr + strlen("CHARGEACCOUNT="),&SR->A);
+  
+-            sprintf(S->SBuffer,"%sCHARGEACCOUNT set to %s\n",
+-              S->SBuffer,
++            sprintf(S->SBuffer + strlen(S->SBuffer),
++	      "CHARGEACCOUNT set to %s\n",
+               (SR->A != NULL) ? SR->A->Name : NONE);
+             } 
+           }    /* END else if () */
+@@ -3083,8 +3077,8 @@ int MUIGridCtl(
+  
+         if (SRes[srindex].R[dindex] != NULL)
+           {
+-          sprintf(S->SBuffer,"%sINFO:     reservation %s recycled\n",
+-            S->SBuffer,
++          sprintf(S->SBuffer + strlen(S->SBuffer),
++            "INFO:     reservation %s recycled\n",
+             SRes[srindex].R[dindex]->Name);
+  
+           MResDestroy(&SRes[srindex].R[dindex]);
+@@ -3458,8 +3452,7 @@ int MUINodeCtl(
+         return(FAILURE);
+         }
+ 
+-      sprintf(tmpLine,"%ssuccessfully processed node create request\n",
+-        tmpLine);
++      strcat(tmpLine,"successfully processed node create request\n");
+  
+       break;
+ 
+@@ -3475,14 +3468,14 @@ int MUINodeCtl(
+ 
+         if (MNodeRemove(N) == FAILURE)
+           {
+-          sprintf(tmpLine,"%sERROR:    cannot remove node '%s'\n",
+-            tmpLine,
++          sprintf(tmpLine + strlen(tmpLine),
++            "ERROR:    cannot remove node '%s'\n",
+             NodeName);
+           }
+         else
+           {
+-          sprintf(tmpLine,"%ssuccessfully removed node '%s'\n",
+-            tmpLine,
++          sprintf(tmpLine + strlen(tmpLine),
++	    "successfully removed node '%s'\n",
+             NodeName);
+           }
+         }  /* END for (nindex) */
+@@ -3505,8 +3498,8 @@ int MUINodeCtl(
+ 
+             if ((aindex = MUGetIndex(ptr,MNodeAttr,FALSE,mnaNONE)) == mnaNONE)
+               {
+-              sprintf(tmpLine,"%sERROR:    invalid argument received (%s)\n",
+-                tmpLine,
++              sprintf(tmpLine + strlen(tmpLine),
++        	"ERROR:    invalid argument received (%s)\n",
+                 ptr);
+ 
+               MUISMsgAdd(S,tmpLine);
+@@ -3522,8 +3515,8 @@ int MUINodeCtl(
+ 
+               if (MNodeSetAttr(N,aindex,(void *)ptr,mdfString,mSet) == FAILURE)
+                 {
+-                sprintf(tmpLine,"%sERROR:    cannot set attribute '%s' to '%s' on node '%s'\n",
+-                  tmpLine,
++                sprintf(tmpLine + strlen(tmpLine),
++                  "ERROR:    cannot set attribute '%s' to '%s' on node '%s'\n",
+                   MNodeAttr[aindex],
+                   ptr, 
+                   N->Name);
+@@ -3533,8 +3526,8 @@ int MUINodeCtl(
+                 return(FAILURE);
+                 }
+ 
+-              sprintf(tmpLine,"%sattribute '%s' set to '%s' on node '%s'\n",
+-                tmpLine,
++              sprintf(tmpLine + strlen(tmpLine),
++                "attribute '%s' set to '%s' on node '%s'\n",
+                 MNodeAttr[aindex],
+                 ptr,
+                 N->Name);
+@@ -3545,8 +3538,8 @@ int MUINodeCtl(
+             continue;
+             }      /* END if (MSched.Mode == msmSim) */
+ 
+-          sprintf(tmpLine,"%sERROR:    invalid argument received (%s)\n",
+-            tmpLine,
++          sprintf(tmpLine + strlen(tmpLine),
++            "ERROR:    invalid argument received (%s)\n",
+             ptr);
+ 
+           MUISMsgAdd(S,tmpLine);
+@@ -3597,8 +3590,7 @@ int MUINodeCtl(
+ 
+             if ((ResID = MUStrTok(ptr,".",&TokPtr2)) == NULL)
+               {
+-              sprintf(S->SBuffer,"%sERROR:    no resource ID specified\n",
+-                S->SBuffer);
++              strcat(S->SBuffer, "ERROR:    no resource ID specified\n");
+  
+               return(FAILURE);
+               }
+@@ -3607,16 +3599,15 @@ int MUINodeCtl(
+ 
+             if ((ptr2 = MUStrTok(NULL,".",&TokPtr2)) == NULL)
+               {
+-              sprintf(S->SBuffer,"%sERROR:    no subcommand specified\n",
+-                S->SBuffer);
++              strcat(S->SBuffer,"ERROR:    no subcommand specified\n");
+  
+               return(FAILURE);
+               }
+ 
+             if ((cindex = MUGetIndex(ptr2,NCModSubC,FALSE,ncmodscNONE)) == ncmodscNONE)
+               {
+-              sprintf(S->SBuffer,"%sERROR:    invalid modify subcommand specified (%s)\n",
+-                S->SBuffer,
++              sprintf(S->SBuffer + strlen(S->SBuffer),
++                "ERROR:    invalid modify subcommand specified (%s)\n",
+                 ptr2);
+  
+               return(FAILURE);
+@@ -3649,8 +3640,7 @@ int MUINodeCtl(
+                 {
+                 /* generic resource overflow */
+ 
+-                sprintf(S->SBuffer,"%sERROR:    generic resource overflow\n",
+-                  S->SBuffer);
++                strcat(S->SBuffer,"ERROR:    generic resource overflow\n");
+  
+                 return(FAILURE);
+                 }
+@@ -3695,8 +3685,8 @@ int MUINodeCtl(
+  
+             if ((vindex = MUGetIndex(ptr,MNodeState,FALSE,mnsNONE)) == mnsNONE)
+               {
+-              sprintf(S->SBuffer,"%sERROR:    invalid node state received (%s)\n",
+-                S->SBuffer,
++              sprintf(S->SBuffer + strlen(S->SBuffer),
++                "ERROR:    invalid node state received (%s)\n",
+                 ptr);
+  
+               return(FAILURE);
+@@ -3790,8 +3780,8 @@ int MUISMsgClear(
+  
+     Align = (int)strlen(S->SBuffer) + (int)strlen(MCKeyword[mckArgs]);
+  
+-    sprintf(S->SBuffer,"%s%*s%s",
+-      S->SBuffer,
++    sprintf(S->SBuffer + strlen(S->SBuffer),
++      "%*s%s",
+       16 - (Align % 16),
+       " ",
+       MCKeyword[mckArgs]);
+@@ -4933,8 +4923,8 @@ int UIJobStart(
+  
+   if (J->State != mjsIdle)
+     {
+-    sprintf(Buffer,"%sjob '%s' is in state '%s'  (state must be idle)\n",
+-      Buffer,
++    sprintf(Buffer + strlen(Buffer),
++      "job '%s' is in state '%s'  (state must be idle)\n",
+       J->Name,
+       MJobState[J->State]); 
+  
+@@ -4945,8 +4935,8 @@ int UIJobStart(
+  
+   if (J->EState != mjsIdle)
+     {
+-    sprintf(Buffer,"%sjob '%s' is in expected state '%s' (expected state must be idle)\n",
+-      Buffer,
++    sprintf(Buffer + strlen(Buffer),
++      "job '%s' is in expected state '%s' (expected state must be idle)\n",
+       J->Name,
+       MJobState[J->EState]);
+  
+@@ -4959,8 +4949,8 @@ int UIJobStart(
+     {
+     if (RQ->DRes.Procs * J->Request.TC > MPar[0].ARes.Procs)
+       {
+-      sprintf(Buffer,"%sjob cannot run  (insufficient idle procs:  %d needed  %d available)\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++	"job cannot run  (insufficient idle procs:  %d needed  %d available)\n",
+         J->Request.TC * RQ->DRes.Procs,
+         MPar[0].ARes.Procs);
+  
+@@ -4981,8 +4971,8 @@ int UIJobStart(
+           NULL,
+           MSched.Time) == FAILURE)
+       {
+-      sprintf(Buffer,"%sjob cannot run (rejected by policy %s)\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++	"job cannot run (rejected by policy %s)\n",
+         MPolicyRejection[PReason]); 
+  
+       return(SUCCESS);
+@@ -5095,8 +5085,7 @@ int UIJobStart(
+  
+     if (pindex == MAX_MPAR)
+       {
+-      sprintf(Buffer,"%sjob cannot run (available nodes do not meet requirements in any partition)\n",
+-        Buffer);
++      strcat(Buffer,"job cannot run (available nodes do not meet requirements in any partition)\n");
+  
+       return(SUCCESS);
+       }
+@@ -5118,14 +5107,12 @@ int UIJobStart(
+ 
+         /* append domain and try again */
+  
+-        sprintf(tmpName,"%s%s",
+-          tmpName,
+-          MSched.DefaultDomain);
++        strcat(tmpName, MSched.DefaultDomain);
+  
+         if (MNodeFind(tmpName,&N) != SUCCESS)
+           {
+-          sprintf(Buffer,"%sERROR:  cannot locate node '%s' in specified nodelist\n",
+-            Buffer,
++          sprintf(Buffer + strlen(Buffer),
++            "ERROR:  cannot locate node '%s' in specified nodelist\n",
+             ptr);
+  
+           return(FAILURE);
+@@ -5148,8 +5135,8 @@ int UIJobStart(
+  
+     if (nodeindex < (int)(RQ->DRes.Procs * J->Request.TC))
+       {
+-      sprintf(Buffer,"%sERROR:  incorrect number of procs in hostlist. (%d requested  %d specified)\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "ERROR:  incorrect number of procs in hostlist. (%d requested  %d specified)\n",
+         J->Request.TC * RQ->DRes.Procs,
+         nodeindex);
+  
+@@ -5170,8 +5157,8 @@ int UIJobStart(
+     DBG(2,fUI) DPrint("INFO:     cannot allocate nodes for job '%s'\n",
+       J->Name);
+  
+-    sprintf(Buffer,"%sERROR:    cannot allocate nodes for job '%s'\n",
+-      Buffer,
++    sprintf(Buffer + strlen(Buffer),
++      "ERROR:    cannot allocate nodes for job '%s'\n",
+       J->Name);
+  
+     return(SUCCESS);
+@@ -5185,8 +5172,8 @@ int UIJobStart(
+       J->Name,
+       Auth);
+  
+-    sprintf(Buffer,"%sjob '%s' cannot be started on %d proc%s\n",
+-      Buffer, 
++    sprintf(Buffer + strlen(Buffer),
++      "job '%s' cannot be started on %d proc%s\n",
+       J->Name,
+       PC,
+       (PC == 1) ? "" : "s");
+@@ -5198,8 +5185,8 @@ int UIJobStart(
+     J->Name,
+     Auth);
+  
+-  sprintf(Buffer,"%sjob '%s' started on %d proc%s\n",
+-    Buffer,
++  sprintf(Buffer + strlen(Buffer),
++    "job '%s' started on %d proc%s\n",
+     J->Name,
+     PC,
+     (PC == 1) ? "" : "s");
+@@ -6463,8 +6450,7 @@ int UIResCreate(
+     {
+     DBG(3,fUI) DPrint("WARNING:  cannot create reservation (invalid timeframe)\n");
+ 
+-    sprintf(SBuffer,"%scannot create reservation (invalid timeframe)\n",
+-      SBuffer);
++    strcat(SBuffer,"cannot create reservation (invalid timeframe)\n");
+ 
+     return(FAILURE);
+     }
+@@ -6575,8 +6561,8 @@ int UIResCreate(
+           *SBufSize,
+           &tmpRQ) == FAILURE)
+       {
+-      sprintf(SBuffer,"%sERROR:    cannot select requested tasks for '%s'\n",
+-        SBuffer,
++      sprintf(SBuffer + strlen(SBuffer),
++        "ERROR:    cannot select requested tasks for '%s'\n",
+         Pattern);
+ 
+       return(FAILURE);
+@@ -6596,8 +6582,8 @@ int UIResCreate(
+           &NodeCount,
+           SBuffer) == FAILURE)
+       {
+-      sprintf(SBuffer,"%sERROR:    cannot determine nodelist for '%s'\n",
+-        SBuffer,
++      sprintf(SBuffer + strlen(SBuffer),
++        "ERROR:    cannot determine nodelist for '%s'\n",
+         Pattern);
+ 
+       return(FAILURE);
+@@ -6887,16 +6873,15 @@ int UIResCreate(
+           ResPLevel,
+           &tmpTime) == FAILURE)
+       {
+-      sprintf(SBuffer,"%sERROR:    limits prevent reservation creation\n",
+-        SBuffer);
++      strcat(SBuffer,"ERROR:    limits prevent reservation creation\n");
+ 
+       return(FAILURE);
+       }
+ 
+     if (tmpTime != StartTime)
+       {
+-      sprintf(SBuffer,"%sERROR:    cannot reserve requested resources until %s\n",
+-        SBuffer,
++      sprintf(SBuffer + strlen(SBuffer),
++	"ERROR:    cannot reserve requested resources until %s\n",
+         MULToTString(tmpTime - MSched.Time));
+ 
+       return(FAILURE);
+@@ -6937,8 +6922,8 @@ int UIResCreate(
+       NodeCount,
+       (NodeCount == 1) ? "" : "s");
+ 
+-    sprintf(SBuffer,"%scannot create reservation for '%s' on %d node%s\n",
+-      SBuffer,
++    sprintf(SBuffer + strlen(SBuffer),
++      "cannot create reservation for '%s' on %d node%s\n",
+       Name,
+       NodeCount,
+       (NodeCount == 1) ? "" : "s");
+@@ -6989,8 +6974,8 @@ int UIResCreate(
+ 
+   for (nindex = 0;nindex < NodeCount;nindex++)
+     {
+-    sprintf(SBuffer,"%s%s:%d\n",
+-      SBuffer,
++    sprintf(SBuffer + strlen(SBuffer),
++      "%s:%d\n",
+       NodeList[nindex].N->Name,
+       NodeList[nindex].TC);
+     }  /* END for (nindex) */
+@@ -7373,8 +7358,8 @@ int __MUIJobToXML(
+       {
+       N = J->NodeList[nindex].N;
+ 
+-      sprintf(tmpLine,"%s%d:%d;",
+-        tmpLine,
++      sprintf(tmpLine + strlen(tmpLine),
++        "%d:%d;",
+         N->FrameIndex,
+         N->SlotIndex);
+ 
+@@ -7893,8 +7878,7 @@ int MUIJobDiagnose(
+ 
+   Truncated = FALSE;
+ 
+-  sprintf(Buffer,"%sDiagnosing Jobs\n",
+-    Buffer);
++  strcat(Buffer,"Diagnosing Jobs\n");
+ 
+   /* FORMAT:       NAME STATE PARTI PROCS QOS WCLI RESER MPR USR GRP ACC QTIM NET OPS ARC MEM DSK CLAS FEAT */
+ 
+@@ -7974,8 +7958,8 @@ int MUIJobDiagnose(
+           }
+         }
+ 
+-      sprintf(Buffer,"%s%-18s %8.8s %3.3s %4d %3.3s %11s %1d %4d %8.8s %8.8s %8.8s %11s %8s %6s %6s %6s %6s %6s %11s ",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++	"%-18s %8.8s %3.3s %4d %3.3s %11s %1d %4d %8.8s %8.8s %8.8s %11s %8s %6s %6s %6s %6s %6s %11s ",
+         J->Name,
+         MJobState[J->State],
+         MAList[ePartition][RQ->PtIndex],
+@@ -7996,8 +7980,8 @@ int MUIJobDiagnose(
+         ProcLine,
+         ClassLine);
+ 
+-      sprintf(Buffer,"%s%s\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "%s\n",
+         MUMAList(eFeature,RQ->ReqFBM,sizeof(RQ->ReqFBM)));
+       }  /* END if (Truncated == FALSE) */
+ 
+@@ -8016,8 +8000,8 @@ int MUIJobDiagnose(
+         {
+         if (Truncated == FALSE)
+           {
+-          sprintf(Buffer,"%sWARNING:  job '%s' utilizes more procs than dedicated (%.2lf > %d)\n",
+-            Buffer,
++          sprintf(Buffer + strlen(Buffer),
++            "WARNING:  job '%s' utilizes more procs than dedicated (%.2lf > %d)\n",
+             J->Name,
+             RQ->URes.Procs / 100.0,
+             RQ->DRes.Procs);
+@@ -8028,8 +8012,8 @@ int MUIJobDiagnose(
+         {
+         if (Truncated == FALSE)
+           {
+-          sprintf(Buffer,"%sWARNING:  job '%s' utilizes more memory than dedicated (%d > %d)\n",
+-            Buffer,
++          sprintf(Buffer + strlen(Buffer),
++            "WARNING:  job '%s' utilizes more memory than dedicated (%d > %d)\n",
+             J->Name,
+             RQ->URes.Mem,
+             RQ->DRes.Mem);
+@@ -8043,8 +8027,8 @@ int MUIJobDiagnose(
+         if (Truncated == FALSE)
+           {
+ /*
+-          sprintf(Buffer,"%sWARNING:  job '%s' unsynchronized proc usage stats (RM: %ld  Sample: %ld)\n",
+-            Buffer,
++          sprintf(Buffer + strlen(Buffer),
++            "WARNING:  job '%s' unsynchronized proc usage stats (RM: %ld  Sample: %ld)\n",
+             J->Name,
+             (long)RQ->LURes.Procs,
+             (long)J->PSUtilized);
+@@ -8057,8 +8041,8 @@ int MUIJobDiagnose(
+         if (Truncated == FALSE)
+           {
+ /*
+-          sprintf(Buffer,"%sWARNING:  job '%s' walltime tracking is corrupt (W:%ld + S:%ld) != (P:%ld - S:%ld)\n",
+-            Buffer,
++          sprintf(Buffer + strlen(Buffer),
++            "WARNING:  job '%s' walltime tracking is corrupt (W:%ld + S:%ld) != (P:%ld - S:%ld)\n",
+             J->Name,
+             J->AWallTime,
+             J->SWallTime,
+@@ -8078,8 +8062,8 @@ int MUIJobDiagnose(
+         {
+         if ((J->State != mjsRunning) || (J->EState != mjsStarting))
+           {
+-          sprintf(Buffer,"%sWARNING:  job '%s' state '%s' does not match expected state '%s'\n",
+-            Buffer,
++          sprintf(Buffer + strlen(Buffer),
++            "WARNING:  job '%s' state '%s' does not match expected state '%s'\n",
+             J->Name,
+             MJobState[J->State],
+             MJobState[J->EState]);
+@@ -8093,8 +8077,8 @@ int MUIJobDiagnose(
+       {
+       if (Truncated == FALSE)
+         {
+-        sprintf(Buffer,"%sWARNING:  job '%s' has invalid pmask\n",
+-          Buffer,
++        sprintf(Buffer + strlen(Buffer),
++          "WARNING:  job '%s' has invalid pmask\n",
+           J->Name);
+         }
+       }
+@@ -8111,8 +8095,8 @@ int MUIJobDiagnose(
+         {
+         if (Truncated == FALSE)
+           {
+-          sprintf(Buffer,"%sWARNING:  active job '%s' has no reservation\n",
+-            Buffer,
++          sprintf(Buffer + strlen(Buffer),
++            "WARNING:  active job '%s' has no reservation\n",
+             J->Name);
+           }
+         }
+@@ -8129,8 +8113,8 @@ int MUIJobDiagnose(
+         {
+         if (Truncated == FALSE)
+           {
+-          sprintf(Buffer,"%sWARNING:  active job '%s' is not in MAQ table\n",
+-            Buffer,
++          sprintf(Buffer + strlen(Buffer),
++            "WARNING:  active job '%s' is not in MAQ table\n",
+             J->Name);
+           }
+         }
+@@ -8143,8 +8127,8 @@ int MUIJobDiagnose(
+           {
+           strcpy(WCLimit,MULToTString(J->WCLimit));
+ 
+-          sprintf(Buffer,"%sWARNING:  job '%s' has exceeded wallclock limit (%s > %s) \n",
+-            Buffer,
++          sprintf(Buffer + strlen(Buffer),
++            "WARNING:  job '%s' has exceeded wallclock limit (%s > %s) \n",
+             J->Name,
+             MULToTString(MSched.Time - J->StartTime),
+             WCLimit);
+@@ -8159,8 +8143,8 @@ int MUIJobDiagnose(
+         {
+         if (Truncated == FALSE)
+           {
+-          sprintf(Buffer,"%sWARNING:  job '%s' has failed to start %d times\n",
+-            Buffer,
++          sprintf(Buffer + strlen(Buffer),
++            "WARNING:  job '%s' has failed to start %d times\n",
+             J->Name,
+             J->StartCount);
+           }
+@@ -8203,8 +8187,8 @@ int MUIJobDiagnose(
+ 
+     if ((Truncated == FALSE) && (Flags & (1 << mcmVerbose)))
+       {
+-      sprintf(Buffer,"%s\n\nMAQ table (%d job slots)\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "\n\nMAQ table (%d job slots)\n",
+         MSched.M[mxoJob]);
+       }
+ 
+@@ -8227,8 +8211,8 @@ int MUIJobDiagnose(
+ 
+       if ((Truncated == FALSE) && (Flags & (1 << mcmVerbose)))
+         {
+-        sprintf(Buffer,"%sMAQ[%02d] --> Job[%03d] '%s'\n",
+-          Buffer,
++        sprintf(Buffer + strlen(Buffer),
++          "MAQ[%02d] --> Job[%03d] '%s'\n",
+           jindex,
+           MAQ[jindex],
+           J->Name);
+@@ -8267,8 +8251,8 @@ int MUIJobDiagnose(
+             {
+             if (Truncated == FALSE)
+               {
+-              sprintf(Buffer,"%sWARNING:  job '%s' with partition mask %s has node %s allocated from partition %s\n",
+-                Buffer,
++              sprintf(Buffer + strlen(Buffer),
++                "WARNING:  job '%s' with partition mask %s has node %s allocated from partition %s\n",
+                 J->Name,
+                 (J->PAL[0] == 0) ?
+                   ALL : MUListAttrs(ePartition,J->PAL[0]),
+@@ -8285,8 +8269,8 @@ int MUIJobDiagnose(
+             {
+             if (Truncated == FALSE)
+               {
+-              sprintf(Buffer,"%sWARNING:  active job '%s' has inactive node %s allocated for %s (node state: '%s')\n",
+-                Buffer,
++              sprintf(Buffer + strlen(Buffer),
++                "WARNING:  active job '%s' has inactive node %s allocated for %s (node state: '%s')\n",
+                 J->Name,
+                 N->Name,
+                 MULToTString(MSched.Time - J->StartTime),
+@@ -8302,8 +8286,8 @@ int MUIJobDiagnose(
+         {
+         if (Truncated == FALSE)
+           {
+-          sprintf(Buffer,"%sWARNING:  active job '%s' has inconsistent node allocation  (nodes: %d  nodelist size: %d)\n",
+-            Buffer,
++          sprintf(Buffer + strlen(Buffer),
++            "WARNING:  active job '%s' has inconsistent node allocation  (nodes: %d  nodelist size: %d)\n",
+             J->Name,
+             J->NodeCount,
+             NodeCount);
+@@ -8314,8 +8298,8 @@ int MUIJobDiagnose(
+         {
+         if (Truncated == FALSE)
+           {
+-          sprintf(Buffer,"%sWARNING:  active job %s has inconsistent proc allocation  (procs: %d  nodelist procs: %d)\n",
+-            Buffer,
++          sprintf(Buffer + strlen(Buffer),
++            "WARNING:  active job %s has inconsistent proc allocation  (procs: %d  nodelist procs: %d)\n",
+             J->Name,
+             MJobGetProcCount(J),
+             pcount);
+@@ -8325,23 +8309,23 @@ int MUIJobDiagnose(
+       RunListCount++;
+       }  /* END for (jindex) */
+ 
+-    sprintf(Buffer,"%s\n\nTotal Jobs: %d  Active Jobs: %d\n",
+-      Buffer,
++    sprintf(Buffer + strlen(Buffer),
++      "\n\nTotal Jobs: %d  Active Jobs: %d\n",
+       TotalJobCount,
+       ActiveJobCount);
+ 
+     if (TotalJobCount != LinkJobCount)
+       {
+-      sprintf(Buffer,"%sWARNING:  job table is corrupt (total jobs (%d) != linked jobs (%d))\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "WARNING:  job table is corrupt (total jobs (%d) != linked jobs (%d))\n",
+         TotalJobCount,
+         LinkJobCount);
+       }
+ 
+     if (ActiveJobCount != RunListCount)
+       {
+-      sprintf(Buffer,"%sWARNING:  active job table is corrupt (active jobs (%d) != active queue size (%d))\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++        "WARNING:  active job table is corrupt (active jobs (%d) != active queue size (%d))\n",
+         ActiveJobCount,
+         RunListCount);
+       }
+@@ -9448,8 +9432,8 @@ int ConfigShow(
+ 
+   ptr[0] = '\0';
+ 
+-  sprintf(ptr,"%s# %s version %s (PID: %d)\n",
+-    ptr,
++  sprintf(ptr + strlen(ptr),
++    "# %s version %s (PID: %d)\n",
+     MSCHED_NAME,
+     MSCHED_VERSION,
+     MOSGetPID()
+@@ -9457,8 +9441,7 @@ int ConfigShow(
+ 
+   if (MSched.CrashMode == TRUE)
+     {
+-    sprintf(ptr,"%s# CRASHMODE initiated\n\n",
+-      ptr);
++    strcat(ptr,"# CRASHMODE initiated\n\n");
+     }
+ 
+   /* policies */
+@@ -9688,8 +9671,8 @@ int UIResDestroy(
+       DBG(3,fUI) DPrint("ALERT:    cannot locate reservation '%s'\n",
+         RID);
+ 
+-      sprintf(Buffer,"%sERROR:    cannot locate reservation '%s'\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++	"ERROR:    cannot locate reservation '%s'\n",
+         RID);
+ 
+       continue;
+@@ -9726,8 +9709,8 @@ int UIResDestroy(
+         Auth,
+         RID);
+ 
+-      sprintf(Buffer,"%sERROR:     user %s is not authorized to release reservation '%s'\n",
+-        Buffer,
++      sprintf(Buffer + strlen(Buffer),
++	"ERROR:     user %s is not authorized to release reservation '%s'\n",
+         Auth,
+         RID);
+ 
+@@ -9742,8 +9725,8 @@ int UIResDestroy(
+       MResType[rtype],
+       RID);
+ 
+-    sprintf(Buffer,"%sreleased %s reservation '%s'\n",
+-      Buffer,
++    sprintf(Buffer + strlen(Buffer),
++      "released %s reservation '%s'\n",
+       MResType[rtype],
+       RID);
+ 
+@@ -10199,8 +10182,7 @@ int UIResDiagnose(
+   DBG(4,fUI) DPrint("INFO:     diagnosing reservation table (%d slots)\n",
+     MAX_MRES);
+ 
+-  sprintf(SBuffer,"%sDiagnosing Reservations\n",
+-    SBuffer);
++  strcat(SBuffer,"Diagnosing Reservations\n");
+ 
+   MResShowState(NULL,Flags,SBuffer,*SBufSize,mAdd);
+ 
+@@ -10300,22 +10282,22 @@ int UIResDiagnose(
+ 
+   if (!strcmp(DiagOpt,NONE))
+     {
+-    sprintf(SBuffer,"%s\nActive Reserved Processors: %d\n",
+-      SBuffer,
++    sprintf(SBuffer + strlen(SBuffer),
++      "\nActive Reserved Processors: %d\n",
+       TotalResAPC);
+ 
+     if ((TotalResAPC + TotalResStatePC) != MPar[0].DRes.Procs)
+       {
+-      sprintf(SBuffer,"%sWARNING:  reservation table is corrupt:  active procs reserved does not equal active procs detected (%d != %d)\n",
+-        SBuffer,
++      sprintf(SBuffer + strlen(SBuffer),
++        "WARNING:  reservation table is corrupt:  active procs reserved does not equal active procs detected (%d != %d)\n",
+         TotalResAPC + TotalResStatePC,
+         MPar[0].DRes.Procs);
+       }
+ 
+     if (ResLast > ResEnd)
+       {
+-      sprintf(SBuffer,"%sWARNING:  reservation table is corrupt:  empty slot detected (slot: %d) before end of table\n",
+-        SBuffer,
++      sprintf(SBuffer + strlen(SBuffer),
++        "WARNING:  reservation table is corrupt:  empty slot detected (slot: %d) before end of table\n",
+         ResEnd);
+       }
+ 
+diff --git a/src/server/mclient.c b/src/server/mclient.c
+index d738cd0..e6b6f5f 100644
+--- a/src/server/mclient.c
++++ b/src/server/mclient.c
+@@ -1575,15 +1575,15 @@ int MCClusterShow(
+  
+       if (S->Failures & (1 << probMemory))
+         {
+-        sprintf(Warnings,"%scheck memory on node %s\n",
+-          Warnings,
++        sprintf(Warnings + strlen(Warnings),
++          "check memory on node %s\n",
+           S->NetName[mnetEN0]);
+         }
+  
+       if (S->Failures & (1 << probLocalDisk))
+         {
+-        sprintf(Warnings,"%scheck local disk on node %s\n",
+-          Warnings,
++        sprintf(Warnings + strlen(Warnings),
++          "check local disk on node %s\n",
+           S->NetName[mnetEN0]);
+         }
+  
+@@ -1595,8 +1595,8 @@ int MCClusterShow(
+  
+         if (S->Failures & (1 << probEthernet))
+           {
+-          sprintf(Warnings,"%scheck ethernet on node %s\n",
+-            Warnings,
++          sprintf(Warnings + strlen(Warnings),
++	    "check ethernet on node %s\n",
+             S->NetName[mnetEN0]);
+           }
+  
+@@ -1604,8 +1604,8 @@ int MCClusterShow(
+  
+         if (S->Failures & (1 << probHPS_IP))
+           {
+-          sprintf(Warnings,"%scheck HPS_IP on node %s\n",
+-            Warnings,
++          sprintf(Warnings + strlen(Warnings),
++	    "check HPS_IP on node %s\n",
+             S->NetName[mnetEN0]);
+           }
+         } 
+@@ -1615,8 +1615,8 @@ int MCClusterShow(
+       if ((S->Failures & (1 << probHPS_User)) &&
+          (S->State == mnsIdle))
+         {
+-        sprintf(Warnings,"%scheck HPS_USER on node %s (node is idle)\n",
+-          Warnings,
++        sprintf(Warnings + strlen(Warnings),
++	  "check HPS_USER on node %s (node is idle)\n",
+           S->NetName[mnetEN0]);
+         }
+  
+@@ -1638,8 +1638,8 @@ int MCClusterShow(
+  
+             SChar = '*';
+  
+-            sprintf(Warnings,"%sjob %s requires node %s (node is down)\n",
+-              Warnings,
++            sprintf(Warnings + strlen(Warnings),
++              "job %s requires node %s (node is down)\n",
+               JName[mapj[findex][sindex]],
+               S->NetName[mnetEN0]);
+  
+@@ -1651,8 +1651,8 @@ int MCClusterShow(
+  
+             SChar = JID[mapj[findex][sindex] % MAX_MJOBINDEX]; 
+  
+-            sprintf(Warnings,"%sjob %s has allocated node %s (node is in state %s)\n",
+-              Warnings,
++            sprintf(Warnings + strlen(Warnings),
++              "job %s has allocated node %s (node is in state %s)\n",
+               JName[mapj[findex][sindex]],
+               S->NetName[mnetEN0],
+               MNodeState[System[findex][sindex].State]);
+@@ -1680,8 +1680,8 @@ int MCClusterShow(
+  
+             SChar = '#';
+  
+-            sprintf(Warnings,"%snode %s is down\n",
+-              Warnings,
++            sprintf(Warnings + strlen(Warnings),
++              "node %s is down\n",
+               S->NetName[mnetEN0]);
+  
+             break;
+@@ -1698,8 +1698,8 @@ int MCClusterShow(
+           case mnsIdle:
+  
+             if (S->Failures & probLocalDisk)
+-              sprintf(Warnings,"%snode %s is idle and local disk space is low\n",
+-                Warnings,
++              sprintf(Warnings + strlen(Warnings),
++                "node %s is idle and local disk space is low\n",
+                 S->NetName[mnetEN0]);
+  
+             SChar = ' ';
+@@ -1716,8 +1716,8 @@ int MCClusterShow(
+  
+             SChar = '@';
+  
+-            sprintf(Warnings,"%snode %s has no job scheduled (node is busy)\n",
+-              Warnings,
++            sprintf(Warnings + strlen(Warnings),
++              "node %s has no job scheduled (node is busy)\n",
+               S->NetName[mnetEN0]);
+  
+             break;
+@@ -1734,8 +1734,8 @@ int MCClusterShow(
+ 
+             if (S->SlotsUsed > 0)
+               { 
+-              sprintf(Warnings,"%snode[%d,%d] %s has unexpected state '%s'\n",
+-                Warnings,
++              sprintf(Warnings + strlen(Warnings),
++                "node[%d,%d] %s has unexpected state '%s'\n",
+                 findex,
+                 sindex,
+                 S->NetName[mnetEN0],  
+diff --git a/src/server/omclient.c b/src/server/omclient.c
+index 5c5dcb7..86eb4da 100644
+--- a/src/server/omclient.c
++++ b/src/server/omclient.c
+@@ -3830,8 +3830,8 @@ int MCShowSchedulerStatistics(
+ 
+       TimeString[strlen(TimeString) - 1] = '\0';
+ 
+-      sprintf(TimeString,"%s (%ld)\n",
+-        TimeString,
++      sprintf(TimeString + strlen(TimeString),
++        " (%ld)\n",
+         Time);
+ 
+       fprintf(stdout,"%s",
+-- 
+1.5.3.8
+

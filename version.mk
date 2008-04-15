@@ -1,0 +1,6 @@
+VERSION = 5.0.0
+RELEASE = 1beta
+COLOR	= CadetBlue
+INCLUDE_SRPMS = 1
+
+REDHAT.ROOT = $(PWD)

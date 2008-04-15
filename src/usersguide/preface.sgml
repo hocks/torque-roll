@@ -1,0 +1,21 @@
+<preface id="preface" xreflabel="preface">
+<title>Preface</title>
+
+
+<para>
+
+The PBS Roll installs and configures the Open Portable Batch System
+scheduler.
+
+</para>
+
+
+<para>
+
+Please visit the <ulink url="http://www.openpbs.org/">Open PBS
+site</ulink> to learn more about their release and the individual
+software components.
+
+</para>
+
+</preface>
