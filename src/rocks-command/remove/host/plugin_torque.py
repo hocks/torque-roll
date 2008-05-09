@@ -66,21 +66,39 @@ import os
 import rocks.commands
 from syslog import syslog
 
+# The config setup is replicated in the insert-ethers plugin, eventually this
+# will be moved to another place as common setup for all rocks command plugins
+# in the torque roll. 
+#
+# DEFAULT values
+UPDATE_NODE_LIST = 1
+
+from ConfigParser import SafeConfigParser, NoOptionError
+config = SafeConfigParser()
+file = config.read("/etc/torque-roll.conf")
+for fname in file:
+    config.readfp(open(fname))
+
+try:
+    UPDATE_NODE_LIST = config.getint("DEFAULT","update_node_list")
+except NoOptionError:
+    pass
+
 class Plugin(rocks.commands.Plugin):
 
     def provides(self):
         return 'torque'
 
     def run(self, host):
-        if os.environ.has_key("PBS_NO_UPDATE") and os.environ["PBS_NO_UPDATE"] == "1":
-            m = "pbs: PBS_NO_UPDATE=1, not touching the nodelist."
+        global UPDATE_NODE_LIST
+        if not UPDATE_NODE_LIST:
+            m = "pbs: not touching the nodelist."
             syslog(0,m)
-            return None
+            return
         m = "pbs: deleting node %s"%host
         syslog(0,m)
         os.system("qmgr -c 'delete node %s'"%host)
-        
-        
+
 ##    cmd = 'cd /opt/gridengine'
 ##		cmd += ' && echo "" | ./inst_sge -ux -host %s' % (host)
 ##		cmd += ' > /dev/null 2>&1'

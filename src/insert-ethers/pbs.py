@@ -115,6 +115,25 @@ import rocks.sql
 from syslog import syslog
 import os,sys
 
+# The config setup is replicated in the rocks command remove plugin, eventually this
+# will be moved to another place as common setup for all rocks command plugins
+# in the torque roll. 
+#
+# DEFAULT values
+UPDATE_NODE_LIST = 1
+
+from ConfigParser import SafeConfigParser, NoOptionError
+config = SafeConfigParser()
+file = config.read("/etc/torque-roll.conf")
+for fname in file:
+    config.readfp(open(fname))
+
+try:
+    UPDATE_NODE_LIST = config.getint("DEFAULT","update_node_list")
+except NoOptionError:
+    pass
+
+
 class Plugin(rocks.sql.InsertEthersPlugin):
 	"PBS insert-ethers plugin"
 	def __init__(self,app):
@@ -138,7 +157,7 @@ class Plugin(rocks.sql.InsertEthersPlugin):
 	
 	
 	def is_compute(self,nodename,id):
-		if os.environ.has_key("PBS_NO_UPDATE") and os.environ["PBS_NO_UPDATE"] == "1":
+		if not UPDATE_NODE_LIST:
 			return None
 		query = self.app.execute("select membership from nodes where id = %s;"%id)
 		

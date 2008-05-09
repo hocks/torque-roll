@@ -237,11 +237,12 @@ PBS Job Queue&lt;/a&gt;
 
 /opt/rocks/sbin/insert-ethers --update --norestart
 
-<file name="/root/.bashrc" mode="append">
-# Uncomment this to prevent automatic updates to the pbs node list
-# You will have to update /opt/torque/server_priv/nodes manually when
-# you add or remove nodes.
-#export PBS_NO_UPDATE=1
+<file name="/etc/torque-roll.conf">
+[DEFAULT]
+# set update_node_list to 0 if you do not want automatic updates
+# to the nodelist when you add or remove nodes. You will then have
+# to update the nodelist in /opt/torque/server_priv/nodes manually.
+update_node_list = 1
 </file>
 
 </post>

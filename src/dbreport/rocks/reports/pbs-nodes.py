@@ -114,11 +114,30 @@ import sys
 import os
 import rocks.reports.base
 
+# The config setup is replicated in the rocks command remove plugin, eventually this
+# will be moved to another place as common setup for all rocks command plugins
+# in the torque roll. 
+#
+# DEFAULT values
+UPDATE_NODE_LIST = 1
+
+from ConfigParser import SafeConfigParser, NoOptionError
+config = SafeConfigParser()
+file = config.read("/etc/torque-roll.conf")
+for fname in file:
+    config.readfp(open(fname))
+
+try:
+    UPDATE_NODE_LIST = config.getint("DEFAULT","update_node_list")
+except NoOptionError:
+    pass
+
+
 class Report(rocks.reports.base.ReportBase):
       
    def run(self):
       # Bail out if the user says we shouldn't touch the nodelist.
-      if os.environ.has_key("PBS_NO_UPDATE") and os.environ["PBS_NO_UPDATE"] == "1":
+      if not UPDATE_NODE_LIST:
          return
       try:
          qmgr = self.args[0]
@@ -136,7 +155,7 @@ class Report(rocks.reports.base.ReportBase):
       self.execute(query)
       for name, cpus in self.fetchall():
          # Print the queue manager commands.
-         print "%s -c \"delete node %s.%s\" 2> /dev/null" % (qmgr, name, dn)
-         print "%s -c \"create node %s.%s np=%d,ntype=cluster\" 2> /dev/null" \
-            % (qmgr, name, dn, cpus)
+         print "%s -c \"delete node %s\" 2> /dev/null" % (qmgr, name)
+         print "%s -c \"create node %s np=%d,ntype=cluster\" 2> /dev/null" \
+            % (qmgr, name, cpus)
 
