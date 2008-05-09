@@ -152,7 +152,7 @@ class Plugin(rocks.sql.InsertEthersPlugin):
 				return None
 		else:
 			#Need to query the nodelist to see if we have a compute node
-			pbsnodes = os.popen("/opt/torque/bin/pbsnodes -a %s.%s"%(nodename,self.private_dnsdomain)).read()
+			pbsnodes = os.popen("/opt/torque/bin/pbsnodes -a %s"%nodename).read()
 			if pbsnodes.find(nodename) != -1:
 				return 1
 			else:
@@ -202,7 +202,7 @@ class Plugin(rocks.sql.InsertEthersPlugin):
 			        _,np = comment.split('=')
 				np = int(np)
 			os.system("/opt/torque/bin/qmgr -c"+
-				  "'create node %s.%s np=%s'" % (nodename,self.private_dnsdomain,np))
+				  "'create node %s np=%s'" % (nodename,np))
 			self.daemons_need_restart = 1	
 		else:
 			m = "pbs: ignoring node %s" % nodename
@@ -214,7 +214,7 @@ class Plugin(rocks.sql.InsertEthersPlugin):
 		if self.is_compute(nodename,id):
 			m =  "pbs: deleting %s from hostlist" % nodename
 			os.system("/opt/torque/bin/qmgr -c"+
-					"'delete node %s.%s'" % (nodename,self.private_dnsdomain))
+					"'delete node %s'" % nodename)
 			self.daemons_need_restart = 1
 		else:
 			m = "pbs: ignoring node %s" % nodename
