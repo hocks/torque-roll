@@ -1,5 +1,5 @@
 VERSION = 5.0.0
-RELEASE = 1
+RELEASE = 1rc1
 COLOR	= CadetBlue
 INCLUDE_SRPMS = 1
 
