@@ -235,21 +235,6 @@ fi
 PBS Job Queue&lt;/a&gt;
 </file>
 
-
-<!-- Fix for bug in rocks 4.2.1, the same that is in the service pack. -->
-<file name="/etc/rndc.conf" perms="0640" owner="root.named">
-options {
-default-server  localhost;
-default-key     "rndckey";
-};
-
-server localhost {
-key    "rndckey";
-};
-
-include "/etc/rndc.key";
-</file>
-
 /opt/rocks/sbin/insert-ethers --update --norestart
 
 <file name="/root/.bashrc" mode="append">
