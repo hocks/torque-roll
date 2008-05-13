@@ -131,6 +131,18 @@ sed -i -e 27i"ulimit -n 4096" /etc/init.d/pbs
 
 <file name="/etc/sysctl.conf" mode="append">
 fs.file-max = 65536
+#recommended values for large cluster from clusterresources.com
+# Don't allow the arp table to become bigger than this
+net.ipv4.neigh.default.gc_thresh3 = 4096
+# Tell the gc when to become aggressive with arp table cleaning.
+# Adjust this based on size of the LAN.
+net.ipv4.neigh.default.gc_thresh2 = 2048
+# Adjust where the gc will leave arp table alone
+net.ipv4.neigh.default.gc_thresh1 = 1024
+# Adjust to arp table gc to clean-up more often
+net.ipv4.neigh.default.gc_interval = 3600
+# ARP cache entry timeout
+net.ipv4.neigh.default.gc_stale_time = 3600
 </file>
 
 
