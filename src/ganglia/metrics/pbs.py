@@ -418,8 +418,8 @@ class PBS(gmon.events.Metric):
 				info.mtime)
 
 			def remaining_time(total,used):
-				th,tm,ts = map(int,total.split(":")
-				uh,um,us = map(int,used.split(":")
+				th,tm,ts = map(int,total.split(":"))
+				uh,um,us = map(int,used.split(":"))
 				rt = (th*3600+tm*60+ts)-(uh*3600+um*60+us)
 				rh, rest = divmod(rt,3600)
 				rm, rs = divmod(rest,60)
