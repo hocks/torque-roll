@@ -13,7 +13,7 @@
 &source_roll-copyright-disclaimer;
 
 <section id="pbs-copyright" xreflabel="PBS">
-<title>Portable Batch System</title>
+<title>Torque</title>
 
 <para>
 Torque, Terascale Open Resource Manager, is derived from the open source

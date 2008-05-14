@@ -3,7 +3,7 @@
 <title>Using</title>
 
 <section>
-<title>Do I need PBS?</title>
+<title>Do I need Torque?</title>
 
 <para>
 Well, that depends.  If you run a small departemental cluster where
@@ -14,8 +14,8 @@ definitely need one.
 </para>
 
 <para>
-How does PBS compare to SGE?  Don't know, I've never tried SGE, go
-figure out yourself what you like best.  PBS and Maui has been around
+How does Torque compare to SGE?  Don't know, I've never tried SGE, go
+figure out yourself what you like best.  Torque (or rather PBS) and Maui has been around
 for a long time and has a lot of features that come in handy when you
 try to keep your users satisfied sustaining a reasonable job throughput.
 </para>

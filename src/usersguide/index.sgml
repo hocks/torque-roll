@@ -6,15 +6,15 @@
 <book>
 <bookinfo>
 
-	<title> PBS Roll: Users Guide </title>
+	<title> Torque Roll: Users Guide </title>
 
-	<subtitle>
+<!--	<subtitle>
 		<inlinemediaobject>
 			<imageobject>
 				<imagedata fileref="images/pbsguy3.png">
 			</imageobject>
 		</inlinemediaobject>
-	</subtitle>
+	</subtitle>//-->
 
         <edition>Version &document_version;</edition>
         <pubdate>&document_pubdate;</pubdate>
@@ -25,7 +25,7 @@
         </copyright>
 
         <releaseinfo>
-                <ulink url="roll-pbs-usersguide.pdf">(PDF version)</ulink>
+                <ulink url="roll-torque-usersguide.pdf">(PDF version)</ulink>
         </releaseinfo>
 
         <legalnotice>

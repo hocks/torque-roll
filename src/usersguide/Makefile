@@ -96,7 +96,7 @@
 #
 
 
-PKGROOT		= /var/www/html/roll-documentation/pbs/$(VERSION)
+PKGROOT		= /var/www/html/roll-documentation/torque/$(VERSION)
 REDHAT.ROOT	= $(PWD)/../../
 ROCKSROOT	= ../../../../..
 -include $(ROCKSROOT)/etc/Rules.mk
