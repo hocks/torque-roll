@@ -1,4 +1,4 @@
-ROLL	= pbs
+ROLL	= torque
 NAME    = roll-$(ROLL)-usersguide
 RELEASE = 0
 

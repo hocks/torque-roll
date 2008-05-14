@@ -79,7 +79,7 @@
 #
 
 
-Summary: Grid Roll
+Summary: Torque Roll
 Name: @NAME@
 Version: @VERSION@
 Release: @RELEASE@
@@ -92,7 +92,7 @@ Buildarch: noarch
 
 %description
 
-Documentation for the Rocks Grid Roll
+Documentation for the Rocks Torque Roll
 
 ##
 ## PREP
