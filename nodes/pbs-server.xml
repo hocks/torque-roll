@@ -106,7 +106,7 @@
 
 	</changelog>
 
-	<package>roll-pbs-usersguide</package>
+	<package>roll-torque-usersguide</package>
 
 <!-- 	<package>pbs-config-sql</package> -->
 	<package>pbs-dbreport</package>
