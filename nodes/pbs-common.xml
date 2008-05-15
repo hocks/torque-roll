@@ -93,7 +93,7 @@
   <package>mpiexec</package>
   <package>pbs_python</package>
   <package>pbstools</package>
-  <!--   <package>roll-pbs-compat-libs</package> -->
+  <package>pbs-rocks</package>
 
 <post>
 

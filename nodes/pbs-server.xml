@@ -112,7 +112,6 @@
 	<package>pbs-dbreport</package>
 	<package>pbs-ganglia</package>
 	<package>pbs-insert-ethers</package>
-	<package>pbs-rocks</package>
 	<package>rocks-command-torque</package>
 
 
