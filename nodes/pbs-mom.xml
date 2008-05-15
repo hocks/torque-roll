@@ -167,6 +167,10 @@ start_sched=0
 start_server=0
 </file>
 
+#fix a bug in the init script. tail +2 does not work anymore,
+#change it to tail -n +2 
+/usr/bin/sed -i 's/tail *+2/tail -n +2/g' /etc/init.d/pbs
+
 /sbin/chkconfig --add pbs
 /sbin/service pbs start
 
