@@ -152,6 +152,8 @@ set server query_other_jobs = True
 PATH=$PATH:/opt/torque/bin 
 export PATH
 
+SERVER_NAME=`cat /opt/torque/server_name`
+
 # let see how we were called
 case "$1" in
   start) 
@@ -160,7 +162,7 @@ case "$1" in
 	# create a empty server database if one doesn't exist
 
 	if [ ! -f /opt/torque/server_priv/serverdb ] ; then
-    		/opt/torque/sbin/pbs_server -tcreate
+    		/opt/torque/sbin/pbs_server -H $SERVER_NAME -tcreate
 		# create a default setup
 		if [ -e /opt/torque/pbs.default ]; then
 			/opt/torque/bin/qmgr &lt; /opt/torque/pbs.default &gt; \
@@ -173,7 +175,7 @@ case "$1" in
 	        #
 	        /opt/rocks/bin/dbreport pbs-nodes | bash &gt;&amp; /dev/null
         else
-	        daemon /opt/torque/sbin/pbs_server
+	        daemon /opt/torque/sbin/pbs_server -H $SERVER_NAME 
 	fi
 	echo
   ;;

@@ -99,12 +99,12 @@
 
 <!-- these should be the same -->
 
-<file name="/opt/torque/default_server">
+<!--<file name="/opt/torque/default_server">
 <var name="Kickstart_PrivateHostname"/>.<var name="Kickstart_PublicDNSDomain"/>
-</file>
+</file>-->
 
 <file name="/opt/torque/server_name">
-<var name="Kickstart_PrivateHostname"/>.<var name="Kickstart_PublicDNSDomain"/>
+<var name="Kickstart_PrivateHostname"/>.<var name="Kickstart_PrivateDNSDomain"/>
 </file>
 
 <!-- remove the init script from the openpbs package -->
