@@ -39,7 +39,7 @@ LICENSE.moab, distributed with this package.
 ## SETUP and PATCH
 ##
 %setup
-%patch1 -p 1
+#%patch1 -p 1
 
 ##
 ## BUILD
