@@ -47,7 +47,7 @@ LICENSE.moab, distributed with this package.
 %build
 #make sure pbs-config is in the path so configure picks up the right setup.
 export PATH=$PATH:/opt/torque/bin
-%configure --prefix=%{prefix} --with-machine=rocks.dummy.host --with-spooldir=%{prefix} \
+./configure --prefix=%{prefix} --with-machine=rocks.dummy.host --with-spooldir=%{prefix} \
 		  --with-key=0
 make
 
