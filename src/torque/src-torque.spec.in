@@ -84,7 +84,7 @@ resources. Other key features include:
 ##
 %build
 
-%configure --with-server-home=/opt/%{name} \
+./configure --prefix=/opt/%{name} --with-server-home=/opt/%{name} \
 	--with-default-server=rocks.dummy.host \
 	--with-rcp=scp --enable-syslog \
 	--disable-gcc-warnings --enable-docs
@@ -137,16 +137,27 @@ mkdir -p $RPM_BUILD_ROOT/opt/%{name}/aux
 
 touch $RPM_BUILD_ROOT/opt/%{name}/pbs_environment
 
+mkdir -p $RPM_BUILD_ROOT/etc/ld.so.conf.d
+
+%ifarch x86_64
+echo /opt/torque/lib64 > $RPM_BUILD_ROOT/etc/ld.so.conf.d/torque.conf
+%else
+echo /opt/torque/lib > $RPM_BUILD_ROOT/etc/ld.so.conf.d/torque.conf
+%endif
+
 %post
+/sbin/ldconfig
+
+
 # FIXME: cannot find tcl on CentOS5.
 # fix the paths.
-#%ifarch x86_64
-#(cd /opt/torque/lib64/xpbsmon ; ./buildindex `pwd`)
-#(cd /opt/torque/lib64/xpbs ; ./buildindex `pwd`)
-#%else
-#(cd /opt/torque/lib/xpbsmon ; ./buildindex `pwd`)
-#(cd /opt/torque/lib/xpbs ; ./buildindex `pwd`)
-#%endif
+%ifarch x86_64
+(cd /opt/torque/lib64/xpbsmon ; ./buildindex `pwd`)
+(cd /opt/torque/lib64/xpbs ; ./buildindex `pwd`)
+%else
+(cd /opt/torque/lib/xpbsmon ; ./buildindex `pwd`)
+(cd /opt/torque/lib/xpbs ; ./buildindex `pwd`)
+%endif
 ##
 ## FILES
 ##
@@ -154,6 +165,7 @@ touch $RPM_BUILD_ROOT/opt/%{name}/pbs_environment
 %attr(755,root,root) /etc/rc.d/init.d/
 %config /opt/%{name}/server_name
 /opt/%{name}/
+/etc/ld.so.conf.d/torque.conf
 
 %doc PBS_License.txt README.torque README.mpiexec Release_Notes CHANGELOG
 
