@@ -131,8 +131,8 @@ set queue default started = True
 #
 set server scheduling = True
 set server acl_host_enable = False
-set server managers = maui@<var name="Kickstart_PrivateHostname"/>.<var name="Kickstart_PrivateDNSDomain"/>
-set server managers += root@<var name="Kickstart_PrivateHostname"/>.<var name="Kickstart_PrivateDNSDomain"/>
+set server managers = maui@<var name="Kickstart_PrivateHostname"/>.<var name="Kickstart_PublicDNSDomain"/>
+set server managers += root@<var name="Kickstart_PrivateHostname"/>.<var name="Kickstart_PublicDNSDomain"/>
 set server default_queue = default
 set server log_events = 511
 set server mail_from = adm
@@ -152,8 +152,6 @@ set server query_other_jobs = True
 PATH=$PATH:/opt/torque/bin 
 export PATH
 
-SERVER_NAME=`cat /opt/torque/server_name`
-
 # let see how we were called
 case "$1" in
   start) 
@@ -162,7 +160,7 @@ case "$1" in
 	# create a empty server database if one doesn't exist
 
 	if [ ! -f /opt/torque/server_priv/serverdb ] ; then
-    		/opt/torque/sbin/pbs_server -H $SERVER_NAME -tcreate
+    		/opt/torque/sbin/pbs_server -tcreate
 		# create a default setup
 		if [ -e /opt/torque/pbs.default ]; then
 			/opt/torque/bin/qmgr &lt; /opt/torque/pbs.default &gt; \
@@ -175,7 +173,7 @@ case "$1" in
 	        #
 	        /opt/rocks/bin/dbreport pbs-nodes | bash &gt;&amp; /dev/null
         else
-	        daemon /opt/torque/sbin/pbs_server -H $SERVER_NAME 
+	        daemon /opt/torque/sbin/pbs_server 
 	fi
 	echo
   ;;

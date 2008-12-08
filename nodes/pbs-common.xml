@@ -104,7 +104,7 @@
 </file>-->
 
 <file name="/opt/torque/server_name">
-<var name="Kickstart_PrivateHostname"/>.<var name="Kickstart_PrivateDNSDomain"/>
+<var name="Kickstart_PrivateHostname"/>.<var name="Kickstart_PublicDNSDomain"/>
 </file>
 
 <!-- remove the init script from the openpbs package -->
