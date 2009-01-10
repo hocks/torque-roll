@@ -288,7 +288,6 @@ class PBS(gmon.events.Metric):
 				id = fields[0].split(': ')[1]
 
 				jobid, queuehost = id.split('.',1)
-				jobid = int(jobid)
 		
 				if jobid not in self.jobs:
 					self.jobs[jobid] = Job()
@@ -375,7 +374,7 @@ class PBS(gmon.events.Metric):
 				ids = split(fields[1], ", ")
 				for i in ids:
 					cpu, id = split(i, "/")
-					jobid = int(id.split('.')[0])
+					jobid = id.split('.')[0]
 					if jobid in self.jobs:
 						self.jobs[jobid].nodes.append(node)
 
