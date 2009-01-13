@@ -24,6 +24,11 @@
 PBS Job Queue&lt;/a&gt;
 </file>
 
+# hack to make jobids from torque job arrays to display correctly
+# their jobids are of the form XX-YY.frontend.domain and cannot be treated as ints anymore.
+if [ -f /var/www/html/ganglia/addons/rocks/functions.php ]; then
+  sed -i -e '/sscanf/ s/queue-job-%d/queue-job-%s/'  /var/www/html/ganglia/addons/rocks/functions.php
+fi
 </post>
 
 </kickstart> 
