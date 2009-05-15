@@ -110,7 +110,7 @@
 
 RMPOLLINTERVAL		00:00:30
 
-SERVERHOST		<var name="Kickstart_PrivateHostname"/>.<var name="Kickstart_PublicDNSDomain"/>
+SERVERHOST		&Kickstart_PrivateHostname;.&Kickstart_PublicDNSDomain;
 SERVERPORT		42559
 SERVERMODE		NORMAL
 
