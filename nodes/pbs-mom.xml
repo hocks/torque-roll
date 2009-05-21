@@ -126,9 +126,9 @@ class App(rocks.sql.Application):
 		# name of the frontend machine.
 		
 		try:
-			master = os.environ['Kickstart_PrivateHostname']
-			domainname = os.environ['Kickstart_PrivateDNSDomain']
-			publicdomainname = os.environ['Kickstart_PublicDNSDomain']
+			master = &Kickstart_PrivateHostname;
+			domainname = &Kickstart_PrivateDNSDomain;
+			publicdomainname = &Kickstart_PublicDNSDomain;
 		except:
 			master = 'frontend-0'
 			domainname = 'public'
