@@ -234,7 +234,6 @@ fi
 PBS Job Queue&lt;/a&gt;
 </file>
 
-/opt/rocks/sbin/insert-ethers --update --norestart
 
 <file name="/etc/torque-roll.conf">
 [DEFAULT]
