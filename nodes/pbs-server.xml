@@ -227,12 +227,11 @@ fi
 *sitesInfo:             {Local;ICON;&Kickstart_PrivateHostname;.&Kickstart_PublicDNSDomain;;&Kickstart_PrivateHostname;.&Kickstart_PublicDNSDomain;;;;}
 </file>
 
-
 <!-- Rocks PBS job queue monitor -->
-<file name="/var/www/html/homepage/24-queue.html">
+<!--<file name="/var/www/html/homepage/24-queue.html">
 &lt;a href="ganglia/addons/rocks/queue.php"&gt;
 PBS Job Queue&lt;/a&gt;
-</file>
+</file>-->
 
 
 <file name="/etc/torque-roll.conf">
