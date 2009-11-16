@@ -77,6 +77,7 @@
 
 PKGROOT = /opt/ganglia
 METRICS = $(wildcard metrics/*.py)
+GANGLIA_CONFIGS = $(wildcard metrics/*.pyconf)
 REDHAT.ROOT = $(PWD)/../../
 
 ROCKSROOT = ../../../../..
@@ -87,8 +88,10 @@ include Rules.mk
 include python.mk
 
 install:: $(SCRIPTS)
-	mkdir -p $(ROOT)/$(PY.ROCKS)/gmon/metrics
-	install -ma+r $(METRICS) $(ROOT)/$(PY.ROCKS)/gmon/metrics/
+	mkdir -p $(ROOT)/$(PKGROOT)/$(LIBARCH)/ganglia/python_modules/
+	install -ma+r $(METRICS) $(ROOT)/$(PKGROOT)/$(LIBARCH)/ganglia/python_modules/
+	mkdir -p $(ROOT)/$(PKGROOT)/etc/conf.d/
+	install -ma+r $(GANGLIA_CONFIGS) $(ROOT)/$(PKGROOT)/etc/conf.d/
 
 clean::
 	rm -f $(SCRIPTS)
