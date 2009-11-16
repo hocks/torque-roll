@@ -131,8 +131,8 @@ set queue default started = True
 #
 set server scheduling = True
 set server acl_host_enable = False
-set server managers = maui@<var name="Kickstart_PrivateHostname"/>.<var name="Kickstart_PublicDNSDomain"/>
-set server managers += root@<var name="Kickstart_PrivateHostname"/>.<var name="Kickstart_PublicDNSDomain"/>
+set server managers = maui@&Kickstart_PrivateHostname;.&Kickstart_PublicDNSDomain;
+set server managers += root@&Kickstart_PrivateHostname;.&Kickstart_PublicDNSDomain;
 set server default_queue = default
 set server log_events = 511
 set server mail_from = adm
@@ -218,23 +218,21 @@ fi
 
 <!-- setup for xpbs and xpbsmon -->
 <file name="/opt/torque/lib/xpbs/xpbsrc" mode="append">
-*serverHosts: <var name="Kickstart_PrivateHostname"/>.<var name="Kickstart_PublicDNSDomain"/>
-*selectHosts: <var name="Kickstart_PrivateHostname"/>.<var name="Kickstart_PublicDNSDomain"/>
-*selectQueues: default@<var name="Kickstart_PrivateHostname"/>.<var name="Kickstart_PublicDNSDomain"/>
+*serverHosts: &Kickstart_PrivateHostname;.&Kickstart_PublicDNSDomain;
+*selectHosts: &Kickstart_PrivateHostname;.&Kickstart_PublicDNSDomain;
+*selectQueues: default@&Kickstart_PrivateHostname;.&Kickstart_PublicDNSDomain;
 </file>
 
 <file name="/opt/torque/lib/xpbsmon/xpbsmonrc" mode="append">
-*sitesInfo:             {Local;ICON;<var name="Kickstart_PrivateHostname"/>.<var name="Kickstart_PublicDNSDomain"/>;<var name="Kickstart_PrivateHostname"/>.<var name="Kickstart_PublicDNSDomain"/>;;;}
+*sitesInfo:             {Local;ICON;&Kickstart_PrivateHostname;.&Kickstart_PublicDNSDomain;;&Kickstart_PrivateHostname;.&Kickstart_PublicDNSDomain;;;;}
 </file>
-
 
 <!-- Rocks PBS job queue monitor -->
-<file name="/var/www/html/homepage/24-queue.html">
+<!--<file name="/var/www/html/homepage/24-queue.html">
 &lt;a href="ganglia/addons/rocks/queue.php"&gt;
 PBS Job Queue&lt;/a&gt;
-</file>
+</file>-->
 
-/opt/rocks/sbin/insert-ethers --update --norestart
 
 <file name="/etc/torque-roll.conf">
 [DEFAULT]

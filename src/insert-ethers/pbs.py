@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #
 # PBS hostlist update module.
 # 
@@ -142,7 +143,7 @@ class Plugin(rocks.sql.InsertEthersPlugin):
 		self.daemons_need_restart = None
 		
 		#get the local domain from the database, some might change it.
-		query = self.app.execute("select value from app_globals where component = 'PrivateDNSDomain';")
+		query = self.app.execute("select value from global_attributes where attr = 'Kickstart_PrivateDNSDomain';")
 		if query:
 			syslog('pbs.py: found domain')
 			self.private_dnsdomain = self.app.fetchone()[0]
@@ -150,7 +151,7 @@ class Plugin(rocks.sql.InsertEthersPlugin):
 			self.private_dnsdomain = "local"
 			
 		#Get the appliances that has Compute=yes in the memberships table.
-		query = self.app.execute("select appliance from memberships where compute = 'yes';")
+		query = self.app.execute("select appliance from memberships where name = 'Compute';")
 		self.compute_appliances = list()
 		for appliance in self.app.fetchall():
 			self.compute_appliances.append(appliance[0])
@@ -208,20 +209,20 @@ class Plugin(rocks.sql.InsertEthersPlugin):
 		# we only add nodes that is a compute appliance
 		if self.is_compute(nodename,id):
 		        cpunum = None
-		        for arg in self.app.caller_args:
-			        if arg.startswith('--cpus'):
-				        _,cpunum = arg.split('=')
-					cpunum = int(cpunum)
-			if cpunum:
-			        st = self.app.execute("update nodes set comment='np=%s' where id=%s"%(cpunum,id))
+		        #for arg in self.app.caller_args:
+			        #if arg.startswith('--cpus'):
+				        #_,cpunum = arg.split('=')
+					#cpunum = int(cpunum)
+			#if cpunum:
+			        #st = self.app.execute("update nodes set comment='np=%s' where id=%s"%(cpunum,id))
 			m =  "pbs: adding %s to hostlist" % nodename
-			query = self.app.execute("select cpus,comment from nodes where id = %s;" % id)
-			(np,comment) = self.app.fetchone()
-			if comment and comment.startswith('np='):
-			        _,np = comment.split('=')
-				np = int(np)
+			query = self.app.execute("select cpus from nodes where id = %s;" % id)
+			np = self.app.fetchone()
+			#if comment and comment.startswith('np='):
+			        #_,np = comment.split('=')
+			np = str(np[0])
 			os.system("/opt/torque/bin/qmgr -c"+
-				  "'create node %s np=%s'" % (nodename,np))
+				  "'create node %s np=%s'" % (nodename, np))
 			self.daemons_need_restart = 1	
 		else:
 			m = "pbs: ignoring node %s" % nodename

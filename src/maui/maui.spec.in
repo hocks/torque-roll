@@ -40,6 +40,9 @@ LICENSE.moab, distributed with this package.
 ##
 %setup
 #%patch1 -p 1
+# larger values than default are needed for large clusters.
+sed -i '/MMAX_JOB/ s/4096/8192/g' ./include/msched.h
+sed -i '/MAX_MRES/ s/1024/8192/g' ./include/moab.h
 
 ##
 ## BUILD
