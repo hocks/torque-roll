@@ -9,9 +9,6 @@ Vendor: @VENDOR@
 License: @VENDOR@, (C) 1999-2002
 Group: Applications/Engineering
 Source: %{name}-%{version}.tar.gz
-#Patch0: torque-2.0.0.patch 
-#Patch1: fermilab_scalability_hack_modified.patch
-#Patch2: torque-nodes.fix
 Buildroot: @VAR@/tmp/%{name}-buildroot
 BuildRequires: readline-devel tcl-devel tk-devel tclx-devel
 Prefix: /opt/torque
@@ -75,9 +72,6 @@ resources. Other key features include:
 ## SETUP and PATCH
 ##
 %setup
-#%patch0 -p1
-#%patch1 -p1
-#%patch2 -p0
 
 ##
 ## BUILD

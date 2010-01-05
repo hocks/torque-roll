@@ -107,8 +107,6 @@ TARBALL = $(BASENAME).tar.gz
 
 
 pretar:: patch
-#	cp torque-2.0.0.patch $(REDHAT.SOURCES)
-	cp torque-nodes.fix $(REDHAT.SOURCES)
 	cp $(BASENAME).tar.gz $(REDHAT.SOURCES)/$(TARBALL)
 
 
