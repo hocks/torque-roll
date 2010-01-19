@@ -22,12 +22,7 @@ within a PBS batch or interactive environment.
 #%patch0 -p1
 
 %build
-%ifarch ia64
-%configure --prefix=%prefix --with-pbs=/opt/torque --with-default-comm=mpich-p4 #\
-# --disable-p4-shmem
-%else
-%configure --prefix=%prefix --with-pbs=/opt/torque --with-default-comm=mpich-p4
-%endif
+%configure --prefix=%prefix --with-pbs=/opt/torque --with-default-comm=pmi
 
 make exec_prefix=$RPM_BUILD_ROOT/%prefix bindir=$RPM_BUILD_ROOT/%prefix/bin mandir=$RPM_BUILD_ROOT/%prefix/man/man1
 
