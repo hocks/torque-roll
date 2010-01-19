@@ -1,3 +1,3 @@
 NAME    = pbs_python
-VERSION = 2.9.4
+VERSION = 3.5.0
 RELEASE = 0

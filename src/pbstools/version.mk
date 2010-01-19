@@ -1,4 +1,4 @@
 NAME    	= pbstools
-VERSION 	= 1.5
+VERSION 	= 2.0
 RELEASE 	= 1
 TARBALL_POSTFIX	= tar.gz

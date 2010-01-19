@@ -4,7 +4,7 @@ Version: @VERSION@
 Release: @RELEASE@
 URL: http://www.osc.edu/~pw/mpiexec/
 Source0: %{name}-%{version}.tgz
-Patch0: patch_to_ib.c
+#Patch0: patch_to_ib.c
 License: Copyright (C) 2000-3 Pete Wyckoff <pw@osc.edu>
 Packager: royd@cc.uit.no
 Group: Applications/Engineering
@@ -19,7 +19,7 @@ within a PBS batch or interactive environment.
 
 %prep
 %setup -q
-%patch0 -p1
+#%patch0 -p1
 
 %build
 %ifarch ia64
@@ -46,6 +46,7 @@ rm -rf $RPM_BUILD_ROOT
 %docdir /usr/share/doc/%{name}-%{version}
 %docdir /usr/share/man/man1
 %prefix
+/usr/share/doc
 
 %changelog
 * Wed Dec  3 2003 Roy Dragseth <royd@cc.uit.no> - 0.73-4

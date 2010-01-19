@@ -99,11 +99,12 @@ build:
 # 	)
 	
 install::
-	mkdir -p $(ROOT)/$(PKGROOT)/bin
+	mkdir -p $(ROOT)/$(PKGROOT)/{bin,sbin}
 	(								\
 		cd $(NAME)-$(VERSION);					\
 		cp bin/qps $(ROOT)/$(PKGROOT)/bin;			\
 		cp bin/qpeek $(ROOT)/$(PKGROOT)/bin;			\
+		cp sbin/qtracejob.pbs-server $(ROOT)/$(PKGROOT)/sbin;	\
 	)
 
 clean::
