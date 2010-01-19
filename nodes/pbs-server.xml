@@ -171,7 +171,7 @@ case "$1" in
 	        # Add the compute nodes to the PBS database with a
 	        # database report.
 	        #
-	        /opt/rocks/bin/dbreport pbs-nodes | bash &gt;&amp; /dev/null
+	        /opt/rocks/bin/rocks report pbsnodes | bash &gt;&amp; /dev/null
         else
 	        daemon /opt/torque/sbin/pbs_server 
 	fi
