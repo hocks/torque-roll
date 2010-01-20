@@ -123,7 +123,15 @@ class Command(rocks.commands.report.command):
 	    self.addText("%s -c \"delete node %s\" 2> /dev/null\n" % (qmgr, name))
 	    self.addText("%s -c \"create node %s np=%d,ntype=cluster\" 2> /dev/null\n"
 		% (qmgr, name, cpus))
-
-
+	  
+	  # Set node properties
+	  # if the node_attributes table contains attr fields named "torque_properties"
+	  # they will be added as properties in the node list.
+	  query = ('select nodes.name, node_attributes.value from nodes, node_attributes where '
+		    +'(node_attributes.attr = "torque_properties" and node_attributes.node = nodes.id)')
+	  self.db.execute(query)
+	  for name, properties in self.db.fetchall():
+	    self.addText("%s -c \"set node %s properties=\'%s\'\" 2> /dev/null\n"%(qmgr,name,properties))
+	    
 
 RollName = "torque"
