@@ -2,6 +2,9 @@
 TORQUE ROLL DOCUMENTATION
 --------------------------------
 
+:Author: Roy Dragseth, roy.dragseth@uit.no
+
+
 .. contents::
 
 
@@ -17,7 +20,7 @@ The batch system consists of the Torque resource manager and the Maui scheduler 
 Roll basics
 ============
 
-Included software.
+Included software
 --------------------
 
 The torque roll contains software collected from the following places
@@ -32,7 +35,7 @@ pbspython      ftp://ftp.sara.nl/pub/outgoing/
 
 
 
-Where to get it
+Links.
 ----------------
 
 ========================= ===================================================
@@ -41,32 +44,19 @@ Download                  ftp://ftp.uit.no/pub/linux/rocks/torque-roll
 Source code               http://devsrc.cc.uit.no/hg/torque/
 ========================= ===================================================
 
+Support.
+---------------
+
+The `rocks mailing list`_ is the preferred place to get help and discuss the torque-roll as there are a lot of people on this list with hands-on experience from using the torque-roll on Rocks.  Before posting questions to the list you should search the `list archives`_ for the terms pbs or torque, as the answer to your problems might be there already.
+
+.. _`rocks mailing list`: https://lists.sdsc.edu/mailman/listinfo/npaci-rocks-discussion
+.. _`list archives`: http://marc.info/?l=npaci-rocks-discussion
+
 Installation
 ---------------
 
 It is assumed that you know how to install a Rocks roll on a frontend, see the main Rocks documentation for an intro to installation of a Rocks cluster. You can either burn the roll iso on a CD or install from a central server, both methods are equivalent.
 
-Building the roll from source
-------------------------------
-
-This is only relevant if you want to change something in how the torque-roll is built.  The default build should cover most needs.
-
-Clone the repository into the rocks build tree on a frontend::
-
-  cd /opt/rocks/share/devel/roll/src/
-  hg clone http://devsrc.cc.uit.no/hg/torque/
-
-Building is a three step process::
-
-  cd torque/src/torque
-  make rpm
-  cd ../..
-  rpm -i RPMS/x86_64/torque*.rpm
-  make roll
-
-You should now have a torque iso file that you can install on a frontend.
-
-The torque rpm build depends on readline-devel and tclx-devel rpms being installed.
 
 
 Using the torque-roll.
@@ -78,15 +68,15 @@ When the rocks frontend is installed with the torque-roll it will have a functio
 Running jobs.
 --------------
 
-The normal way of using a batch system is through submitting jobs as scripts that get executed on the compute nodes.  A job script can be any shell (bash, csh, zsh), python, perl or whatever supports the # comment character.  The most normal is though to use sh or csh as job script syntax.  The job script is a regular script with some special comments that is meaningful to the batch system.  In torque all lines beginning with ``#PBS`` are interpreted by the batch system.  You submit the job with the ``qsub`` command::
+The normal way of using a batch system is through submitting jobs as scripts that get executed on the compute nodes.  A job script can be any shell (bash, csh, zsh), python, perl or whatever supports the # comment character.  The most common is though to use sh or csh as job script syntax.  The job script is a regular script with some special comments that is meaningful to the batch system.  In torque all lines beginning with ``#PBS`` are interpreted by the batch system.  You submit the job with the ``qsub`` command::
 
   qsub runscript.sh
 
 
-A simple run script.
----------------------
+A serial job.
+...................
 
-It is useful to give info about expected walltime and the number of cpus the job needs.  Here is how runscript.sh could look like::
+It is useful to give info about expected walltime and the number of cpus the job needs.  Here is how runscript.sh could look like for a single cpu job::
 
   #!/bin/sh
   #PBS -lwalltime=1:00:00
@@ -98,12 +88,43 @@ This script asks for 1 hour runtime and will run on one cpu.  The job will termi
 
   qsub -lnodes=1,walltime=1:00:00 runscript.sh
 
-Commandline arguments takes precedence over runscript directives.
+Commandline arguments takes precedence over runscript directives. Note that ``#PBS`` must be given exactly like this as the first characters on the line, no extra #s or spaces.  All ``#PBS`` directives must come before any shell statements or else they will be ignored by the batch system.
 
-A more advanced run script.
-----------------------------------
+When the job is finished you will get back two files with the standard output and standard error for the job in the same directory you submitted the job from.  See ``man qsub``.
 
-Let us take a look at the following script, ``runscript2.sh``::
+A parallel job.
+..................
+
+If you have a parallel application using MPI_ you can run parallel jobs within the batch system. 
+Let us take a look at the following script::
+
+  #!/bin/sh
+  #PBS -lwalltime=1:00:00
+  #PBS -lnodes=10
+  #PBS -lpmem=2gb
+  #PBS -N parallel_simulation
+  
+  mpirun ./do-my-work
+
+.. _MPI:  http://www.mpi-forum.org
+
+Note: this runscript will probably not work in its current form as different MPI-implementations need different commands to start the application, see below.
+
+The runscript above is a parallel job that asks for 10 cpus and 2 gigabytes of memory per cpu, the scheduler will then make sure these resources are available to the job before it can start.  The runscript will be run on the first node in the nodelist assigned to this job and ``mpirun`` will take care of launching the parallel programme named ``do-my-work`` on all of the cpus assigned to this jobs, possibly on several compute nodes.  If you ask for more resources than is possibly available on a node the job will either be rejected at submit time or will never start.
+
+Different kinds of MPI libraries.
+.......................................
+
+Since quite a few implementations of the MPI libraries exist, both free and commercial, it  is not possible to cover all possible ways to start any MPI-application in this document.  The focus will be on the ones that ships with Rocks: OpenMPI_ and MPICH2_.
+
+OpenMPI
+,,,,,,,,,,,,
+
+Rocks comes with a it's own compilation of OpenMPI_ installed in ``/opt/openmpi/``.  This is the system-wide default and is used by the ``mpicc/mpif90`` compilers in the default path.  Although OpenMPI has support for the torque tm-interface (tm=taskmanager) it is not compiled into the library shipped with Rocks (the reason for this is that the OpenMPI build process needs to have access to libtm from torque to enable the interface).  The best workaround is to recompile OpenMPI on a system with torque installed.  Then the mpirun command can talk directly to the batch system to get the nodelist and start the parallel application using the torque daemon already running on the nodes.  Job startup times for large parallel applications is significantly shorter using the tm-interface that using ssh to start the application on all nodes.  If you recompile OpenMPI you can use the above runscript example as-is.
+
+If however you for some reason do not rebuild the OpenMPI library you can use a workaround provided with the torque-roll.  The torque roll contains a python-wrapper script named ``pbsdsh-wrapper`` that will make ``pbsdsh`` behave like ssh.  ``pbsdsh`` can run arbitratry commands under the taskmanager on remote nodes participating in the job.  
+
+All that is needed is to setup a few environment variables for OpenMPI::
 
   #!/bin/sh
   #PBS -lwalltime=1:00:00
@@ -113,9 +134,37 @@ Let us take a look at the following script, ``runscript2.sh``::
   
   cd $PBS_O_WORKDIR
 
+  . /opt/torque/etc/openmpi-setup.sh
+
   mpirun ./do-my-work
 
-``runscript2.sh`` is a parallel job that asks for 10 cpus and 2 gigabytes of memory per cpu, the scheduler will then make sure these resources are available to the job before it can start.  The runscript will be run on the first node in the nodelist assigned to this job and ``mpirun`` will take care of launching the parallel programme named ``do-my-work`` on all of the cpus assigned to this jobs, possibly on several compute nodes.  If you ask for more resources than is possibly available on a node the job will either be rejected at submit time or will never start.
+The ``openmpi-setup.sh`` takes care of setting a few enviroment variables to make mpirun use the ``pbsdshwrapper`` to start the application.
+
+.. _OpenMPI: http://www.open-mpi.org/
+
+
+MPICH2
+,,,,,,,,,,,,,,,
+
+The basic Rocks installation also contain MPICH2_.  This library has a different startup mechanism than OpenMPI.  MPICH2 is installed in ``/opt/mpich2/gnu/`` and has its own ``mpif90/mpicc`` wrappers.  The torque-roll provides the ``mpiexec`` jobs launcher that provides the tight binding to the taskmanager.  ``mpiexec`` is a stand-alone product installed in ``/opt/mpiexec/`` and must not be confused with ``mpiexec`` from OpenMPI.  The safest way to use it is to use the explicit path in the runscript::
+
+
+  #!/bin/sh
+  #PBS -lwalltime=1:00:00
+  #PBS -lnodes=10
+  #PBS -lpmem=2gb
+  #PBS -N parallel_simulation
+  
+  cd $PBS_O_WORKDIR
+
+  /opt/mpiexec/bin/mpiexec ./do-my-work
+
+``mpiexec`` can start applications using several other MPI implementations like INTEL MPI and MVAPICH2.
+
+.. _MPICH2: http://www.mcs.anl.gov/research/projects/mpich2/
+
+
+For more info see the links in the `Included software`_ section.
 
 
 Inspecting the jobs in the queue.
@@ -123,17 +172,21 @@ Inspecting the jobs in the queue.
 
 There are several commands that will give you detailed information about the jobs in the batch system.
 
-==========  ====================  =========================================
-Command      Task                   useful flags
-==========  ====================  =========================================
-showq        List jobs in queue     -r -- only running jobs
-                                    -i -- only idle jobs
-                                    -b -- only blocked jobs
-                                    -u username -- only 
-----------  --------------------  -----------------------------------------
-qstat        List jobs in queue     -f jobid -- list details
-                                    -n  -- list nodes assigned to job
-==========  ====================  =========================================
++----------+--------------------+----------------------------------------+
+|Command   |  Task              |     useful flags                       |
++----------+--------------------+----------------------------------------+
+|showq     | List jobs in queue |   -r -- only running jobs              |
++          +                    |                                        |
+|          |                    |   -i -- only idle jobs                 |
++          +                    |                                        |
+|          |                    |   -b -- only blocked jobs              |
++          +                    |                                        |
+|          |                    |   -u username -- this user only        |
++----------+--------------------+----------------------------------------+
+|qstat     |  List jobs in queue|  -f jobid -- list details              |
++          +                    +                                        +
+|          |                    |  -n  -- list nodes assigned to job     |
++----------+--------------------+----------------------------------------+
 
 While both showq and qstat do the same task the output is quite different::
 
@@ -142,20 +195,19 @@ While both showq and qstat do the same task the output is quite different::
   $ qstat
 
 
-Scheduling features
-======================
+Modifying the default behaviour.
+==================================
 
 Maui provides a rich set of scheduling features.
 -------------------------------------------------
 
-Maui can schedule on cpus, walltime, memory, disk size, network topology and more...
-We will focus on node distribution and how to make your users behave. 
+In it's default configuration the batch system is set up as a FIFO system, but it is possible to change this to accomodate almost any scheduling policy.  Maui can schedule on cpus, walltime, memory, disk size, network topology and more.  See the maui and torque documentation for a full in-depth understanding of how to tune the batch system.
 
 Needed job info
 -------------------
 
-For scheduling to be useful one needs info about the jobs.
-At least number of cpus and walltime. Memory requirements also useful.  For instance::
+To make the maui scheduler able to make informed decisions on how to prioritize jobs and on what nodes they should be started on it needs info about the jobs.
+The minimum requirement is the number of cpus and walltime. Information about memory requirements for the job is also useful.  For instance::
 
   #PBS -lwalltime=HH:MM:SS
   #PBS -lnodes=10:ppn=8
@@ -166,16 +218,18 @@ Memory handling on linux
 
 torque/maui supports two memory specification types, (p)mem and (p)vmem on linux.
 
-* pmem is not enforced, used only as information to the scheduler.
-* pvmem is enforced, terminating procs that cross the limit.
-  limiting vmem size by setting ulimit -v on the processes
+* pmem is not enforced, it is used only as information to the scheduler.
+* pvmem is enforced, procs that exceed the limit will be terminated.
+  The pbs_mom daemon limits vmem size by setting the equivalent of ulimit -v on the processes it controls.
 
-Torque hacking
------------------
+It is currently not possible to limit the amount of physical memory a process can allocate on a linux system.  One can only limit the amount of virtual memory.  Virtual memory is the physical memoroy + swap.   See ``man pbs_resources_linux`` for details.
 
-Torque is installed in /opt/torque. qmgr is the torque mgt. command
+Tuning the batch system.
+----------------------------
 
-Friendly advice: backup your working config::
+Torque is installed in ``/opt/torque``. ``qmgr`` is the torque management command
+
+Friendly advice: backup your working config before modifying the setup::
 
   # qmgr -c “print server” > /tmp/pbsconfig.txt
 
@@ -187,8 +241,14 @@ Roll back to escape from a messed up system::
 This will bring you back to where you started.  
 *Remark:* this will wipe the whole queue setup and all currently queued and running jobs will be lost!
 
-Maui hacking
---------------
+The default batch configuration from the torque-roll is saved in ``/opt/torque/pbs.default``. Do this to get back the original setup that came with the torque-roll::
+
+  # qterm; pbs_server -t create
+  # qmgr < /opt/torque/pbs.default
+
+
+Maui vs torque
+----------------
 
 Most things can be achieved by modifying /opt/maui/maui.cfg. 
 Maui needs restart after changing the config file::
@@ -205,7 +265,7 @@ Prioritizing short jobs
 -------------------------
 
 Often it is useful to give shorter jobs higher priority.
-Use the XFACTOR feature in maui rather than torque queues with different priorites.::
+It is recommended to use the XFACTOR feature in maui rather than torque queues with different priorites.::
 
   XFACTORWEIGHT 1000
 
@@ -220,7 +280,7 @@ Depends on users giving reasonable walltime limits.
 Prioritizing large jobs (maui)
 ----------------------------------
 
-In a cluster with a diverse mix of jobs it is useful to prioritize the large jobs and make the smaller ones fill in the gaps.::
+In a cluster with a diverse mix of jobs it is often desirable to prioritize the large jobs and make the smaller ones fill in the gaps.::
 
    CPUWEIGHT 1000
    MEMWEIGHT 100
@@ -248,13 +308,14 @@ Adjusting your policy
 ----------------------
 
 You can play with the weights to fine-tune your scheduling policies::
+
   XFACTORWEIGHT 100
   FSWEIGHT 1000
   RESWEIGHT 10
   CPUWEIGHT 1000
   MEMWEIGHT 100
 
-Analyze the prioritization with diagnose -p
+Analyze the prioritization with ``diagnose -p``
 
 Job node distribution
 ------------------------
@@ -266,11 +327,11 @@ Spread or pack?::
 
   NODEALLOCATIONPOLICY PRIORITY
 
-Select the most busy nodes::
+Select the most busy nodes first::
 
   NODECFG[DEFAULT] PRIORITYF=JOBCOUNT
 
-Select the least busy nodes::
+Select the least busy nodes first::
 
   NODECFG[DEFAULT] PRIORITYF=-1.0*JOBCOUNT
 
@@ -336,4 +397,30 @@ Increase the priority and limit the usage::
   CLASSCFG[express] PRIORITY=1000 MAXIJOB=1  MAXJOBPERUSER=1 QLIST=express QDEF=express
   QOSCFG[express] FLAGS=IGNUSER
 
-This will allow users to test job scripts and run interactive jobs with good turnaround
+This will allow users to test job scripts and run interactive jobs with good turnaround by submitting to the express queue, ``qsub -q express .......``.  At the same time misuse is prevented since only 1 running job is allowed per user.
+
+
+Appendix.
+=============
+
+Building the roll from source
+------------------------------
+
+This is only relevant if you want to change something in how the torque-roll is built.  The default build should cover most needs.
+
+Clone the repository into the rocks build tree on a frontend::
+
+  cd /opt/rocks/share/devel/roll/src/
+  hg clone http://devsrc.cc.uit.no/hg/torque/
+
+Building is a three step process::
+
+  cd torque/src/torque
+  make rpm
+  cd ../..
+  rpm -i RPMS/x86_64/torque*.rpm
+  make roll
+
+You should now have a torque iso file that you can install on a frontend.
+
+The torque rpm build depends on readline-devel and tclx-devel rpms being installed.

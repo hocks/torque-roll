@@ -105,23 +105,14 @@ include Rules.mk
 
 default: $(NAME).spec ../$(NAME)-$(VERSION).tar.gz
 
-html: predoc
-	jw --backend html --dsl $(PWD)/rocks.dsl#html index.sgml
+html: 
+	rst2html -g --time torque-roll-userguide.rst > torque-roll-userguide.html
 
-pdf: predoc
-	jw --backend pdf --dsl $(PWD)/rocks.dsl#print index.sgml
-
-build: html pdf
+build: html
 
 install:: build
-	mkdir -p $(ROOT)/$(PKGROOT)/images
-	mkdir -p $(ROOT)/$(PKGROOT)/stylesheet-images
-	install -ma+r index.pdf 	$(ROOT)/$(PKGROOT)/$(NAME).pdf
-	install -ma+r *.html    	$(ROOT)/$(PKGROOT)/
-	install -ma+r images/*.png	$(ROOT)/$(PKGROOT)/images/
-	install -ma+r stylesheet-images/{*.gif,*.png} \
-		$(ROOT)/$(PKGROOT)/stylesheet-images/
-	install -ma+r rocks.css $(ROOT)/$(PKGROOT)/
+	mkdir -p $(ROOT)/$(PKGROOT)
+	install -ma+r torque-roll-userguide.html $(ROOT)/$(PKGROOT)/torque-roll-userguide.html
 
 clean::
 	rm -f *.html

@@ -89,6 +89,7 @@ Group: System Environment/Base
 Source: %{name}-%{version}.tar.gz
 Buildroot: @VAR@/tmp/%{name}-buildroot
 Buildarch: noarch
+BuildRequires: python-docutils
 
 %description
 
