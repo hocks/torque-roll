@@ -4,9 +4,9 @@
 # 
 # @Copyright@
 # 
-# 				Rocks
-# 		         www.rocksclusters.org
-# 		        version 4.2.1 (Cydonia)
+#               Rocks
+#                www.rocksclusters.org
+#               version 4.2.1 (Cydonia)
 # 
 # Copyright (c) 2006 The Regents of the University of California. All
 # rights reserved.
@@ -26,9 +26,9 @@
 # 3. All advertising and press materials, printed or electronic, mentioning
 # features or use of this software must display the following acknowledgement: 
 # 
-# 	"This product includes software developed by the Rocks 
-# 	Cluster Group at the San Diego Supercomputer Center at the
-# 	University of California, San Diego and its contributors."
+#   "This product includes software developed by the Rocks 
+#   Cluster Group at the San Diego Supercomputer Center at the
+#   University of California, San Diego and its contributors."
 # 
 # 4. Neither the name or logo of this software nor the names of its
 # authors may be used to endorse or promote products derived from this
@@ -136,132 +136,133 @@ except NoOptionError:
 
 
 class Plugin(rocks.sql.InsertEthersPlugin):
-	"PBS insert-ethers plugin"
-	def __init__(self,app):
-		rocks.sql.InsertEthersPlugin.__init__(self,app)
-		self.addlist=list()
-		self.daemons_need_restart = None
-		
-		#get the local domain from the database, some might change it.
-		query = self.app.execute("select value from global_attributes where attr = 'Kickstart_PrivateDNSDomain';")
-		if query:
-			syslog('pbs.py: found domain')
-			self.private_dnsdomain = self.app.fetchone()[0]
-		else:
-			self.private_dnsdomain = "local"
-			
-		#Get the appliances that has Compute=yes in the memberships table.
-		query = self.app.execute("select appliance from memberships where name = 'Compute';")
-		self.compute_appliances = list()
-		for appliance in self.app.fetchall():
-			self.compute_appliances.append(appliance[0])
-	
-	
-	def is_compute(self,nodename,id):
-		if not UPDATE_NODE_LIST:
-			return None
-		query = self.app.execute("select membership from nodes where id = %s;"%id)
-		
-		# We cannot rely on the node being in the database. On --remove it is removed 
-		# from the table before we get here.
-		if query:
-			membership = self.app.fetchone()[0]
-			if membership in self.compute_appliances:
-				return 1
-			else:
-				return None
-		else:
-			#Need to query the nodelist to see if we have a compute node
-			pbsnodes = os.popen("/opt/torque/bin/pbsnodes -a %s"%nodename).read()
-			if pbsnodes.find(nodename) != -1:
-				return 1
-			else:
-				return None
-		
-		
-	def restart_daemons(self):
-                #
-                # don't execute this code if we are in 'batch' or 'norestart'
-                # mode (copied from sge plugin)
-                #
-                if '--batch' in self.app.caller_args or \
-                                '--norestart' in self.app.caller_args:
-                        return
+    "PBS insert-ethers plugin"
+    def __init__(self,app):
+        rocks.sql.InsertEthersPlugin.__init__(self,app)
+        self.addlist=list()
+        self.daemons_need_restart = None
+        
+        #get the local domain from the database, some might change it.
+        query = self.app.execute("select value from global_attributes where attr = 'Kickstart_PrivateDNSDomain';")
+        if query:
+            syslog('pbs.py: found domain')
+            self.private_dnsdomain = self.app.fetchone()[0]
+        else:
+            self.private_dnsdomain = "local"
+            
+        #Get the appliances that has Compute=yes in the memberships table.
+        query = self.app.execute("select appliance from memberships where name = 'Compute';")
+        self.compute_appliances = list()
+        for appliance in self.app.fetchall():
+            self.compute_appliances.append(appliance[0])
+    
+    
+    def is_compute(self,nodename,id):
+        if not UPDATE_NODE_LIST:
+            return None
+        query = self.app.execute("select membership from nodes where id = %s;"%id)
+        
+        # We cannot rely on the node being in the database. On --remove it is removed 
+        # from the table before we get here.
+        if query:
+            membership = self.app.fetchone()[0]
+            if membership in self.compute_appliances:
+                return 1
+            else:
+                return None
+        else:
+            #Need to query the nodelist to see if we have a compute node
+            pbsnodes = os.popen("/opt/torque/bin/pbsnodes -a %s"%nodename).read()
+            if pbsnodes.find(nodename) != -1:
+                return 1
+            else:
+                return None
+        
+        
+    def restart_daemons(self):
+        #
+        # don't execute this code if we are in 'batch' or 'norestart'
+        # mode (copied from sge plugin)
+        #
+        if '--batch' in self.app.caller_args or \
+            '--norestart' in self.app.caller_args:
+            return
 
-		syslog(0,"pbs.py: Restarting pbs_server")
-		os.system("/sbin/service pbs_server restart < /dev/null >& /dev/null")
-		syslog(0,"pbs.py: Restarting maui")
-		os.system("/sbin/service maui restart < /dev/null >& /dev/null")
-		
-	def added(self, nodename, id):
-		"""This function doesn't do the real addition to the
-		hostlist it just generates a list of nodes to be added
-		when the done() method is called.  The real adding of
-		the node is done in real_added()."""
+        syslog(0,"pbs.py: Restarting pbs_server")
+        os.system("/sbin/service pbs_server restart < /dev/null >& /dev/null")
+        syslog(0,"pbs.py: Restarting maui")
+        os.system("/sbin/service maui restart < /dev/null >& /dev/null")
+        
+    def added(self, nodename, id):
+        """This function doesn't do the real addition to the
+        hostlist it just generates a list of nodes to be added
+        when the done() method is called.  The real adding of
+        the node is done in real_added()."""
 
-		self.addlist.append((nodename,id))
-		
-	def real_added(self, nodename, id):
-		"""This is where the real addition is done to the
-		hostlist. Hopefully we will have the correct number of
-		cpus now."""
+        self.addlist.append((nodename,id))
+        
+    def real_added(self, nodename, id):
+        """This is where the real addition is done to the
+        hostlist. Hopefully we will have the correct number of
+        cpus now."""
 
-		# we only add nodes that is a compute appliance
-		if self.is_compute(nodename,id):
-		        cpunum = None
-		        #for arg in self.app.caller_args:
-			        #if arg.startswith('--cpus'):
-				        #_,cpunum = arg.split('=')
-					#cpunum = int(cpunum)
-			#if cpunum:
-			        #st = self.app.execute("update nodes set comment='np=%s' where id=%s"%(cpunum,id))
-			m =  "pbs: adding %s to hostlist" % nodename
-			query = self.app.execute("select cpus from nodes where id = %s;" % id)
-			np = self.app.fetchone()
-			#if comment and comment.startswith('np='):
-			        #_,np = comment.split('=')
-			np = str(np[0])
-			os.system("/opt/torque/bin/qmgr -c"+
-				  "'create node %s np=%s'" % (nodename, np))
-			self.daemons_need_restart = 1	
-		else:
-			m = "pbs: ignoring node %s" % nodename
-		syslog(0,m)
+        # we only add nodes that is a compute appliance
+        if self.is_compute(nodename,id):
+            m =  "pbs: adding %s to hostlist" % nodename
+            query = self.app.execute("select cpus from nodes where id = %s;" % id)
+            np = self.app.fetchone()
 
-
-	def removed(self, nodename, id):
-		"""Remove the node from the list of compute nodes."""
-		if self.is_compute(nodename,id):
-			m =  "pbs: deleting %s from hostlist" % nodename
-			os.system("/opt/torque/bin/qmgr -c"+
-					"'delete node %s'" % nodename)
-			self.daemons_need_restart = 1
-		else:
-			m = "pbs: ignoring node %s" % nodename
-		syslog(0,m)
+            np = str(np[0])
+            os.system("/opt/torque/bin/qmgr -c"+
+                  "'create node %s np=%s'" % (nodename, np))
+            self.daemons_need_restart = 1   
+            # Set node properties
+            # if the node_attributes table contains attr fields named "torque_properties"
+            # they will be added as properties in the node list.
+            querystring = ('select nodes.name, node_attributes.value from nodes, node_attributes where '
+                    +'(node_attributes.attr = "torque_properties" and node_attributes.node = nodes.id)')
+            query = self.app.execute(querystring)
+            for name, properties in self.app.fetchall():
+                os.system("/opt/torque/bin/qmgr -c \"set node %s properties=\'%s\'\" 2> /dev/null\n"%(name, properties))
+        else:
+            m = "pbs: ignoring node %s" % nodename
+        syslog(0,m)
 
 
-	def update(self):
-		"Redo the whole compute node list"
-		m =  "insert-ethers running pbs update "
-		syslog(0,m)
-  		query = self.app.execute("select name,id from nodes order by rack,rank;")
- 		for name,id in self.app.fetchall():
- 			self.removed(name,id)
- 			self.real_added(name,id)
-		self.restart_daemons()
+    def removed(self, nodename, id):
+        """Remove the node from the list of compute nodes."""
+        if self.is_compute(nodename,id):
+            m =  "pbs: deleting %s from hostlist" % nodename
+            os.system("/opt/torque/bin/qmgr -c"+
+                    "'delete node %s'" % nodename)
+            self.daemons_need_restart = 1
+        else:
+            m = "pbs: ignoring node %s" % nodename
+        syslog(0,m)
 
-	def done(self):
-		"""Doing the real addition of nodes here because we
-		cannot know the number of cpus before the nodes have
-		asked for a kickstart file."""
 
-		syslog(0,"pbs.py: done called")
-		if self.addlist:
-			m =  "pbs: adding the new nodes."
-			syslog(0,m)
+    def update(self):
+        "Redo the whole compute node list"
 
-			for name, id in self.addlist:
-				self.real_added(name,id)
-		if self.daemons_need_restart:
-			self.restart_daemons()		
+        m =  "insert-ethers running pbs update "
+        syslog(0,m)
+        query = self.app.execute("select name,id from nodes order by rack,rank;")
+        for name,id in self.app.fetchall():
+            self.removed(name,id)
+            self.real_added(name,id)
+        self.restart_daemons()
+
+    def done(self):
+        """Doing the real addition of nodes here because we
+        cannot know the number of cpus before the nodes have
+        asked for a kickstart file."""
+
+        syslog(0,"pbs.py: done called")
+        if self.addlist:
+            m =  "pbs: adding the new nodes."
+            syslog(0,m)
+
+            for name, id in self.addlist:
+                self.real_added(name,id)
+        if self.daemons_need_restart:
+            self.restart_daemons()      
