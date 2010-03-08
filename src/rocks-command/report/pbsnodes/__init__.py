@@ -3,12 +3,12 @@
 #
 # @Copyright@
 # 
-# 				Rocks(r)
-# 		         www.rocksclusters.org
-# 		       version 5.2 (Chimichanga)
+#               Rocks(r)
+#                www.rocksclusters.org
+#              version 5.2 (Chimichanga)
 # 
 # Copyright (c) 2000 - 2009 The Regents of the University of California.
-# All rights reserved.	
+# All rights reserved.  
 # 
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -25,9 +25,9 @@
 # 3. All advertising and press materials, printed or electronic, mentioning
 # features or use of this software must display the following acknowledgement: 
 # 
-# 	"This product includes software developed by the Rocks(r)
-# 	Cluster Group at the San Diego Supercomputer Center at the
-# 	University of California, San Diego and its contributors."
+#   "This product includes software developed by the Rocks(r)
+#   Cluster Group at the San Diego Supercomputer Center at the
+#   University of California, San Diego and its contributors."
 # 
 # 4. Except as permitted for the purposes of acknowledgment in paragraph 3,
 # neither the name or logo of this software nor the names of its
@@ -94,44 +94,44 @@ except NoOptionError:
 
 
 class Command(rocks.commands.report.command):
-	"""
+    """
         Create a report that can be used to update the node list by 
-	piping this to a shell.
+    piping this to a shell.
         
         <example cmd='report pbsnodes'>                
         Create commands suitable as input to a shell for updating the node list.
         </example>
-	"""
-	
-	def run(self, params, args):
-	  # Bail out if the user says we shouldn't touch the nodelist.
-	  if not UPDATE_NODE_LIST:
-	    return
-	  qmgr = "qmgr"
+    """
+    
+    def run(self, params, args):
+      # Bail out if the user says we shouldn't touch the nodelist.
+      if not UPDATE_NODE_LIST:
+        return
+      qmgr = "qmgr"
 
-#	  dn = self.getGlobalVar("Kickstart","PrivateDNSDomain")
+#     dn = self.getGlobalVar("Kickstart","PrivateDNSDomain")
 
-	  # Query the database for compute node info by doing a killer join.
-	  # Thanks Bruno!
-	  query=('select nodes.name, nodes.cpus from nodes, memberships '
-	    'where (nodes.membership = memberships.id '
-	    'and memberships.name = "Compute") '
-	    'order by rack,rank' )
-	  self.db.execute(query)
-	  for name, cpus in self.db.fetchall():
-	    # Print the queue manager commands.
-	    self.addText("%s -c \"delete node %s\" 2> /dev/null\n" % (qmgr, name))
-	    self.addText("%s -c \"create node %s np=%d,ntype=cluster\" 2> /dev/null\n"
-		% (qmgr, name, cpus))
-	  
-	  # Set node properties
-	  # if the node_attributes table contains attr fields named "torque_properties"
-	  # they will be added as properties in the node list.
-	  query = ('select nodes.name, node_attributes.value from nodes, node_attributes where '
-		    +'(node_attributes.attr = "torque_properties" and node_attributes.node = nodes.id)')
-	  self.db.execute(query)
-	  for name, properties in self.db.fetchall():
-	    self.addText("%s -c \"set node %s properties=\'%s\'\" 2> /dev/null\n"%(qmgr,name,properties))
-	    
+      # Query the database for compute node info by doing a killer join.
+      # Thanks Bruno!
+      query=('select nodes.name, nodes.cpus from nodes, memberships '
+        'where (nodes.membership = memberships.id '
+        'and memberships.name = "Compute") '
+        'order by rack,rank' )
+      self.db.execute(query)
+      for name, cpus in self.db.fetchall():
+        # Print the queue manager commands.
+        self.addText("%s -c \"delete node %s\" 2> /dev/null\n" % (qmgr, name))
+        self.addText("%s -c \"create node %s np=%d,ntype=cluster\" 2> /dev/null\n"
+        % (qmgr, name, cpus))
+      
+      # Set node properties
+      # if the node_attributes table contains attr fields named "torque_properties"
+      # they will be added as properties in the node list.
+      query = ('select nodes.name, node_attributes.value from nodes, node_attributes where '
+            +'(node_attributes.attr = "torque_properties" and node_attributes.node = nodes.id)')
+      self.db.execute(query)
+      for name, properties in self.db.fetchall():
+        self.addText("%s -c \"set node %s properties=\'%s\'\" 2> /dev/null\n"%(qmgr,name,properties))
+        
 
 RollName = "torque"
