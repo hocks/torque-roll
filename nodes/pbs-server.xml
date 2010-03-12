@@ -120,9 +120,7 @@
 
 <!--Set the pbs attribute so other rolls can conditionally link in xml-nodes from
 this roll-->
-<post>
 /opt/rocks/bin/rocks set appliance attr compute pbs true
-</post>
 
 
 <file name="/opt/torque/pbs.default">
