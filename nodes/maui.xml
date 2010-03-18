@@ -120,6 +120,7 @@ RMCFG[base]		TYPE=PBS
 # ADMIN1 users have full scheduler control
 
 ADMIN1                maui root
+ADMIN3                ALL
 
 LOGFILE               maui.log
 LOGFILEMAXSIZE        10000000
