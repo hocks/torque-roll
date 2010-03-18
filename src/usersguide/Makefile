@@ -106,13 +106,14 @@ include Rules.mk
 default: $(NAME).spec ../$(NAME)-$(VERSION).tar.gz
 
 html: 
-	rst2html -g --time torque-roll-userguide.rst > torque-roll-userguide.html
+	rst2html -g --time --stylesheet voidspace.css torque-roll-userguide.rst > torque-roll-userguide.html
 
 build: html
 
 install:: build
 	mkdir -p $(ROOT)/$(PKGROOT)
 	install -ma+r torque-roll-userguide.html $(ROOT)/$(PKGROOT)/torque-roll-userguide.html
+	install -ma+r runscript.sh $(ROOT)/$(PKGROOT)/runscript.sh
 
 clean::
 	rm -f *.html
