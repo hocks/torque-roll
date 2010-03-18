@@ -83,6 +83,8 @@ include Rules.mk
 install::
 	mkdir -p $(ROOT)/etc/profile.d
 	install -m755  pbs-maui-path.* $(ROOT)/etc/profile.d
+	mkdir -p $(ROOT)/var/www/cgi-bin
+	install -m755  mauiweb/*.cgi $(ROOT)/var/www/cgi-bin
 
 clean::
 	rm -f $(SCRIPTS)
