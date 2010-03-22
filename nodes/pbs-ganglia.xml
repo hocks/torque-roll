@@ -19,10 +19,15 @@
 
 <post>
 
-<file name="/var/www/html/homepage/24-queue.html">
+<!--<file name="/var/www/html/homepage/24-queue.html">
 &lt;a href="ganglia/addons/rocks/queue.php"&gt;
 PBS Job Queue&lt;/a&gt;
-</file>
+</file>-->
+
+if [ -f /var/www/html/ganglia/templates/Rocks/cluster_extra.tpl ]; then
+   sed -i '/Tools/ a &lt;a href="/cgi-bin/showq.cgi"&gt;&lt;b&gt;Showq&lt;/b&gt;&lt;/a&gt; |' \
+      /var/www/html/ganglia/templates/Rocks/cluster_extra.tpl
+fi
 
 # hack to make jobids from torque job arrays to display correctly
 # their jobids are of the form XX-YY.frontend.domain and cannot be treated as ints anymore.
