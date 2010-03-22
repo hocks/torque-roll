@@ -94,6 +94,7 @@
   <package>pbs_python</package>
   <package>pbstools</package>
   <package>pbs-rocks</package>
+  <package>torque-openmpi</package>
 
 <post>
 
