@@ -223,7 +223,7 @@ esac
 /sbin/chkconfig maui on
 
 <!-- maui runs as user 'maui', we need to create a fake ssh account -->
-mkdir /opt/maui/.ssh
+mkdir -p /opt/maui/.ssh
 chmod 700 /opt/maui/.ssh
 
 <file name="/opt/maui/.ssh/id_rsa.pub" perms="400"/>
