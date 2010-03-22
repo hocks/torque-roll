@@ -63,6 +63,9 @@ install::
 	mkdir -p $(ROOT)/opt/torque/bin
 	install -m755 pbsdshwrapper $(ROOT)/opt/torque/bin
 
+build::
+	/bin/true
+
 clean::
 	rm -f $(SCRIPTS)
 
