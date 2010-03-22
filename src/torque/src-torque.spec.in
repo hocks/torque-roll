@@ -78,10 +78,17 @@ resources. Other key features include:
 ##
 %build
 
-./configure --prefix=/opt/%{name} --with-server-home=/opt/%{name} \
+%ifarch x86_64
+%define pam_dir /lib64/security
+%else
+%define pam_dir /lib/security
+%endif
+
+%configure --prefix=/opt/%{name} --with-server-home=/opt/%{name} \
 	--with-default-server=rocks.dummy.host \
 	--with-rcp=scp --enable-syslog \
-	--disable-gcc-warnings --enable-docs
+	--disable-gcc-warnings --enable-docs \
+	--with-pam=%{pam_dir}
 
 make 
 
@@ -91,13 +98,18 @@ make
 %install
 
 #this shouldn't be neccessary!!
-%ifarch x86_64
-sed -i "/libdir/ s|/lib|/lib64|" pbs-config
-%endif
+#%ifarch x86_64
+#sed -i "/libdir/ s|/lib|/lib64|" pbs-config
+#%endif
 
-#%makeinstall PBS_SERVER_HOME=$RPM_BUILD_ROOT/opt/%{name}
-make prefix=$RPM_BUILD_ROOT/opt/%{name} \
-	PBS_SERVER_HOME=$RPM_BUILD_ROOT/opt/%{name} install
+#%makeinstall PBS_SERVER_HOME=$RPM_BUILD_ROOT/opt/%{name} pammoddir=$RPM_BUILD_ROOT/%{pam_dir}
+#make prefix=$RPM_BUILD_ROOT/opt/%{name} \
+#	PBS_SERVER_HOME=$RPM_BUILD_ROOT/opt/%{name} install
+
+%{__make} install DESTDIR=$RPM_BUILD_ROOT INSTALL="%{__install} -p"
+
+env DESTDIR=$RPM_BUILD_ROOT sh ./buildutils/pbs_mkdirs common
+
 
 #
 # get the init script from the distro
@@ -171,6 +183,7 @@ fi
 %config /opt/%{name}/server_name
 /opt/%{name}/
 /etc/ld.so.conf.d/torque.conf
+/lib64/security
 
 %doc PBS_License.txt README.torque README.mpiexec Release_Notes CHANGELOG
 
