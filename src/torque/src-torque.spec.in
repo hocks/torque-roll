@@ -16,6 +16,12 @@ Prefix: /opt/torque
 %define _prefix /opt/torque
 %define _mandir /opt/torque/man
 
+%ifarch x86_64
+%define pam_dir /lib64/security
+%else
+%define pam_dir /lib/security
+%endif
+
 %description
 Torque is a resource manager providing control over batch jobs and
 distributed compute nodes. Torque is derived from the open source
@@ -78,11 +84,6 @@ resources. Other key features include:
 ##
 %build
 
-%ifarch x86_64
-%define pam_dir /lib64/security
-%else
-%define pam_dir /lib/security
-%endif
 
 %configure --prefix=/opt/%{name} --with-server-home=/opt/%{name} \
 	--with-default-server=rocks.dummy.host \
@@ -183,7 +184,7 @@ fi
 %config /opt/%{name}/server_name
 /opt/%{name}/
 /etc/ld.so.conf.d/torque.conf
-/lib64/security
+%{pam_dir}
 
 %doc PBS_License.txt README.torque README.mpiexec Release_Notes CHANGELOG
 
