@@ -52,8 +52,9 @@ sed -i '/MAX_MRES/ s/1024/8192/g' ./include/moab.h
 export PATH=$PATH:/opt/torque/bin
 ./configure --prefix=%{prefix} --with-machine=rocks.dummy.host --with-spooldir=%{prefix} \
 		  --with-key=0
-make
 
+sed -i "/PBSLDFLAGS/ s|-ltorque|-L$(pbs-config --libdir) $(pbs-config --libs)|" Makefile
+make 
 #
 ##
 ## INSTALL
