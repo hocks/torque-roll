@@ -85,7 +85,7 @@ resources. Other key features include:
 %build
 
 
-%configure --prefix=/opt/%{name} --with-server-home=/opt/%{name} \
+./configure --prefix=/opt/%{name} --with-server-home=/opt/%{name} \
 	--with-default-server=rocks.dummy.host \
 	--with-rcp=scp --enable-syslog \
 	--disable-gcc-warnings --enable-docs \
