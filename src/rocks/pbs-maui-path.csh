@@ -81,6 +81,10 @@
 
 set path = ( $path /opt/maui/bin /opt/torque/bin /opt/torque/sbin )
 
-setenv MANPATH /opt/torque/man:"$MANPATH"
+if ( $?MANPATH ) then
+  setenv MANPATH /opt/torque/man:"$MANPATH"
+else
+  setenv MANPATH /opt/torque/man
+endif
 
 
