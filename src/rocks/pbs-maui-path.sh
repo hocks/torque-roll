@@ -81,4 +81,4 @@
 
 export PATH=$PATH:/opt/maui/bin:/opt/torque/bin:/opt/torque/sbin
 
-export MANPATH=/opt/torque/man:$PATH
+export MANPATH=/opt/torque/man:$MANPATH
