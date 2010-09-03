@@ -79,6 +79,9 @@ resources. Other key features include:
 ##
 %setup
 
+# fix the tail bug in the init script
+/bin/sed -i 's/tail *+2/tail -n +2/g' src/tools/init.d/pbs
+
 ##
 ## BUILD
 ##
