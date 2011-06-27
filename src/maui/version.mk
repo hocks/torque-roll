@@ -1,7 +1,7 @@
 NAME = maui
-VERSION = 3.2.6
+VERSION = 3.3.1
 RELEASE = 1
-PATCH = p21
+PATCH = 
 SNAPSHOT=
 VENDOR = clusterresources.com
 MAKE.rpmflag = -ba
