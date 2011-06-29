@@ -129,6 +129,7 @@ this roll-->
 #
 create queue default
 set queue default queue_type = Execution
+set queue default keep_completed = 120
 set queue default enabled = True
 set queue default started = True
 #
@@ -142,6 +143,7 @@ set server default_queue = default
 set server log_events = 511
 set server mail_from = adm
 set server query_other_jobs = True
+set server allow_node_submit = True
 </file>
 
 
