@@ -31,7 +31,7 @@
 	</order>
 
 
-	<edge from="hpc-server">
+	<edge from="server">
 		<to>pbs-server</to>
 	</edge>
 
