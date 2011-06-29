@@ -65,7 +65,8 @@ build:
 	gunzip -c $(NAME)-$(VERSION).$(TARBALL_POSTFIX) | $(TAR) -xf -
 	( 							\
 		cd $(NAME)-$(VERSION);				\
-		./configure --prefix=$(PKGROOT)		\
+		export PATH+=:/opt/torque/bin;		\
+		./configure --prefix=$(PKGROOT)			\
 		--with-machine=rocks.dummy.host --with-spooldir=$(PKGROOT) \
 		  --with-key=0					\
 		$(MAKE);					\
