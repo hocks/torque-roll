@@ -144,6 +144,7 @@ set server log_events = 511
 set server mail_from = adm
 set server query_other_jobs = True
 set server allow_node_submit = True
+set server moab_array_compatible = True
 </file>
 
 
