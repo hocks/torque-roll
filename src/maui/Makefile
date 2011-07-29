@@ -55,11 +55,12 @@
 #
 # $Log$
 
-REDHAT.ROOT = $(CURDIR)/../../
+PKGROOT = 
+REDHAT.ROOT = $(PWD)/../../
 
+ROCKSROOT = ../../../../..
 -include $(ROCKSROOT)/etc/Rules.mk
 include Rules.mk
-
 
 build:
 	gunzip -c $(NAME)-$(VERSION).$(TARBALL_POSTFIX) | $(TAR) -xf -

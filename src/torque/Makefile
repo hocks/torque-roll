@@ -94,6 +94,7 @@
 #
 #
 
+PKGROOT = 
 ROCKSROOT = ../../../../..
 REDHAT.ROOT = $(PWD)/../..
 -include $(ROCKSROOT)/etc/Rules.mk
@@ -104,7 +105,7 @@ include version.mk
 BASENAME = torque-$(VERSION)
 TARBALL = $(BASENAME).tar.gz
 
-
+default: rpm
 
 pretar:: patch
 	cp $(BASENAME).tar.gz $(REDHAT.SOURCES)/$(TARBALL)

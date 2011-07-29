@@ -55,8 +55,10 @@
 #
 # $Log$
 
-REDHAT.ROOT = $(CURDIR)/../../
+PKGROOT = 
+REDHAT.ROOT = $(PWD)/../../
 
+ROCKSROOT = ../../../../..
 -include $(ROCKSROOT)/etc/Rules.mk
 include Rules.mk
 
