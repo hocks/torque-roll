@@ -31,6 +31,10 @@
 		<tail>pbs-login</tail>
 	</order>
 
+        <order head="maui">
+                <tail>pbs-login</tail>
+        </order>
+
 	<edge from="login">
 	  <to>pbs-login</to>
 	  <to>pbs-common</to>
