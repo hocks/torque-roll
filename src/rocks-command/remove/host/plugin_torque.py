@@ -98,6 +98,7 @@ class Plugin(rocks.commands.Plugin):
         m = "pbs: deleting node %s"%host
         syslog(0,m)
         os.system("qmgr -c 'delete node %s'"%host)
+        os.system("qmgr -c 'set server submit_hosts-= %s'"%host)
 
 ##    cmd = 'cd /opt/gridengine'
 ##		cmd += ' && echo "" | ./inst_sge -ux -host %s' % (host)
@@ -106,3 +107,4 @@ class Plugin(rocks.commands.Plugin):
 ##
 ##		cmd = 'qconf -dh %s > /dev/null 2>&1' % (host)
 ##		os.system(cmd)
+

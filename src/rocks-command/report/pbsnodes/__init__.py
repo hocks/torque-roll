@@ -132,6 +132,17 @@ class Command(rocks.commands.report.command):
       self.db.execute(query)
       for name, properties in self.db.fetchall():
         self.addText("%s -c \"set node %s properties=\'%s\'\" 2> /dev/null\n"%(qmgr,name,properties))
+      # allow job submit from login appliances
+      query=('select nodes.name from nodes, memberships '
+        'where (nodes.membership = memberships.id '
+        'and memberships.name = "Login") '
+        'order by rack,rank' )
+      self.db.execute(query)
+      for (name,) in self.db.fetchall():
+        # Print the queue manager commands.
+        self.addText("%s -c \"set server submit_hosts-= %s\" 2> /dev/null\n" % (qmgr, name))
+        self.addText("%s -c \"set server submit_hosts+= %s\" 2> /dev/null\n" % (qmgr, name))
+
         
 
 RollName = "torque"

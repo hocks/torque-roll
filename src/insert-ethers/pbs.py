@@ -155,6 +155,11 @@ class Plugin(rocks.sql.InsertEthersPlugin):
         self.compute_appliances = list()
         for appliance in self.app.fetchall():
             self.compute_appliances.append(appliance[0])
+        #Get login appliances
+        query = self.app.execute("select appliance from memberships where name = 'Login';")
+        self.login_appliances = list()
+        for appliance in self.app.fetchall():
+            self.login_appliances.append(appliance[0])
     
     
     def is_compute(self,nodename,id):
@@ -177,8 +182,19 @@ class Plugin(rocks.sql.InsertEthersPlugin):
                 return 1
             else:
                 return None
+
+    def is_login(self,nodename,id):
+        if not UPDATE_NODE_LIST:
+            return None
+        query = self.app.execute("select membership from nodes where id = %s;"%id)
+        if query:
+            membership = self.app.fetchone()[0]
+            if membership in self.login_appliances:
+                return 1
+
+        return None
         
-        
+
     def restart_daemons(self):
         #
         # don't execute this code if we are in 'batch' or 'norestart'
@@ -224,6 +240,12 @@ class Plugin(rocks.sql.InsertEthersPlugin):
             query = self.app.execute(querystring)
             for name, properties in self.app.fetchall():
                 os.system("/opt/torque/bin/qmgr -c \"set node %s properties=\'%s\'\" 2> /dev/null\n"%(name, properties))
+        elif self.is_login(nodename, id):
+            m = "pbs: adding %s to submit_hosts" % nodename
+            os.system("/opt/torque/bin/qmgr -c"+
+                  "'set server submit_hosts-=%s'" % (nodename, ))
+            os.system("/opt/torque/bin/qmgr -c"+
+                  "'set server submit_hosts+=%s'" % (nodename, ))
         else:
             m = "pbs: ignoring node %s" % nodename
         syslog(0,m)
@@ -236,6 +258,10 @@ class Plugin(rocks.sql.InsertEthersPlugin):
             os.system("/opt/torque/bin/qmgr -c"+
                     "'delete node %s'" % nodename)
             self.daemons_need_restart = 1
+        elif self.is_login(nodename, id):
+            m = "pbs: removing %s from submit_hosts" % nodename
+            os.system("/opt/torque/bin/qmgr -c"+
+                  "'set server submit_hosts-=%s'" % (nodename, ))
         else:
             m = "pbs: ignoring node %s" % nodename
         syslog(0,m)
