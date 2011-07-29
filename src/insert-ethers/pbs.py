@@ -196,6 +196,8 @@ class Plugin(rocks.sql.InsertEthersPlugin):
         
 
     def restart_daemons(self):
+        # no need to restart daemons anymore...
+        return None
         #
         # don't execute this code if we are in 'batch' or 'norestart'
         # mode (copied from sge plugin)
