@@ -113,6 +113,7 @@
 	<package>pbs-ganglia</package>
 	<package>pbs-insert-ethers</package>
 	<package>rocks-command-torque</package>
+	<package>mauiweb</package>
 
 
 
