@@ -241,6 +241,12 @@ chown -R maui.maui /opt/maui
 rm -f /etc/rc.d/rocksconfig.d/post-81-maui
 </file>
 
+# add firewall rules to prevent external access to maui ports (related to CVE-2011-2907)
+rocks add firewall appliance=Frontend network=public protocol=tcp service=42559 chain=INPUT action=REJECT rulename=R115-MAUI
+rocks add firewall appliance=Frontend network=public protocol=tcp service=42560 chain=INPUT action=REJECT rulename=R116-MAUI
+rocks add firewall appliance=Frontend network=public protocol=tcp service=15004 chain=INPUT action=REJECT rulename=R117-MAUI
+
+
 </post>
 
 </kickstart> 

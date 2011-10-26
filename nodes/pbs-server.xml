@@ -251,6 +251,11 @@ PBS Job Queue&lt;/a&gt;
 update_node_list = 1
 </file>
 
+# add firewall rules to block external access to the pbs ports (CVE-2011-2907)
+rocks add firewall appliance=Frontend network=public protocol=udp service=15001 chain=INPUT action=REJECT rulename=R100-PBS_SERVER
+rocks add firewall appliance=Frontend network=public protocol=udp service=1023 chain=INPUT action=REJECT rulename=R110-PBS_SERVER
+rocks add firewall appliance=Frontend network=public protocol=tcp service=15001 chain=INPUT action=REJECT rulename=R105-PBS_SERVER
+
 </post>
 
 </kickstart> 
