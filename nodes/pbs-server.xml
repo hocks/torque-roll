@@ -149,70 +149,9 @@ set server moab_array_compatible = True
 </file>
 
 
-<!-- put in a new init script -->
-
-<file name="/etc/rc.d/init.d/pbs_server" perms="a+x">
-#!/bin/sh
-# chkconfig: 345 85 83
-# description: Server for the versatile PBS batch versatile batch system 
-
-# Source the library functions
-. /etc/rc.d/init.d/functions
-PATH=$PATH:/opt/torque/bin 
-export PATH
-
-# let see how we were called
-case "$1" in
-  start) 
-	echo -n "Starting pbs_server: "
-
-	# create a empty server database if one doesn't exist
-
-	if [ ! -f /opt/torque/server_priv/serverdb ] ; then
-    		/opt/torque/sbin/pbs_server -tcreate
-		# create a default setup
-		if [ -e /opt/torque/pbs.default ]; then
-			/opt/torque/bin/qmgr &lt; /opt/torque/pbs.default &gt; \
-			/dev/null 2&gt;&amp;1
-		fi
-
-	        #
-	        # Add the compute nodes to the PBS database with a
-	        # database report.
-	        #
-	        /opt/rocks/bin/rocks report pbsnodes | bash &gt;&amp; /dev/null
-        else
-	        daemon /opt/torque/sbin/pbs_server 
-	fi
-	echo
-  ;;
-  stop)
-	echo -n "Stopping pbs_server: "
-	/opt/torque/bin/qterm -t quick
-	echo
-
-	#	
-	# make sure the server is dead
-	#	
-	killall -9 /opt/torque/sbin/pbs_server  &gt;&amp; /dev/null
-  ;;
-  status)
-	status pbs_server
-  ;;
-  restart)
-	echo "Restarting PBS"
-	$0 stop
-	$0 start
-	echo "done."
-  ;;
-  *)
-	echo "Usage: pbs-server {start|stop|restart|status}"
-	exit 1
-esac
-</file>
-
 
 <!-- start the appropriate services -->
+/sbin/chkconfig --add pbs_server 
 /sbin/chkconfig pbs_server on
 touch /opt/torque/firstboot
 <file name='/etc/rc.d/rc.local' mode='append'>

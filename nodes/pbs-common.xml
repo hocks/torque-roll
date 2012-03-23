@@ -97,20 +97,17 @@
 
 <post>
 
-<!-- these should be the same -->
+<file name="/etc/sysconfig/trqauthd">
+PBS_DAEMON=/opt/torque/sbin/trqauthd
+PBS_HOME=/var/spool/torque
+</file>
+chkconfig --add trqauthd
+chkconfig trqauthd on
 
-<!--<file name="/opt/torque/default_server">
-&Kickstart_PrivateHostname;.&Kickstart_PublicDNSDomain;
-</file>-->
-
-<file name="/opt/torque/server_name">
+<file name="/var/spool/torque/server_name">
 &Kickstart_PrivateHostname;.&Kickstart_PublicDNSDomain;
 </file>
 
-<!-- remove the init script from the openpbs package -->
-
-/sbin/chkconfig pbs off
-/sbin/chkconfig --del pbs
 
 <file name="/etc/man.config" mode="append">
 MANPATH /opt/torque/man
@@ -124,9 +121,9 @@ MANPATH /opt/torque/man
 </file>
 # these are also needed in the pbs startup scripts.
 # just hack them into the beginning
-sed -i -e 27i"ulimit -l unlimited" /etc/init.d/pbs
-sed -i -e 27i"ulimit -s unlimited" /etc/init.d/pbs
-sed -i -e 27i"ulimit -n 4096" /etc/init.d/pbs
+sed -i -e 20i"ulimit -l unlimited" /etc/init.d/pbs_mom
+sed -i -e 20i"ulimit -s unlimited" /etc/init.d/pbs_mom
+sed -i -e 20i"ulimit -n 4096" /etc/init.d/pbs_mom
 
 
 <file name="/etc/sysctl.conf" mode="append">

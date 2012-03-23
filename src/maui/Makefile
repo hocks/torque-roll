@@ -66,6 +66,7 @@ build:
 	gunzip -c $(NAME)-$(VERSION).$(TARBALL_POSTFIX) | $(TAR) -xf -
 	( 							\
 		cd $(NAME)-$(VERSION);				\
+		patch -s -p0 < ../maui-torque40.patch;		\
 		export PATH+=:/opt/torque/bin;		\
 		./configure --prefix=$(PKGROOT)			\
 		--with-machine=rocks.dummy.host --with-spooldir=$(PKGROOT) \

@@ -88,7 +88,7 @@ resources. Other key features include:
 %build
 
 
-./configure --prefix=/opt/%{name} --with-server-home=/opt/%{name} \
+./configure --prefix=/opt/%{name} --with-server-home=/var/spool/%{name} \
 	--with-default-server=rocks.dummy.host \
 	--with-rcp=scp --enable-syslog \
 	--disable-gcc-warnings --enable-docs \
@@ -120,37 +120,39 @@ env DESTDIR=$RPM_BUILD_ROOT sh ./buildutils/pbs_mkdirs common
 #
 mkdir -p $RPM_BUILD_ROOT/etc/rc.d/init.d
 
-cp $RPM_BUILD_DIR/%{name}-%{version}/src/tools/init.d/pbs \
+cp $RPM_BUILD_DIR/%{name}-%{version}/contrib/init.d/pbs_server \
+	$RPM_BUILD_DIR/%{name}-%{version}/contrib/init.d/pbs_mom \
+	$RPM_BUILD_DIR/%{name}-%{version}/contrib/init.d/trqauthd \
 	$RPM_BUILD_ROOT/etc/rc.d/init.d
 
 #
 # create the appropriate directories used by the PBS services
 #
-mkdir -p $RPM_BUILD_ROOT/opt/%{name}/spool
-chmod a+rw $RPM_BUILD_ROOT/opt/%{name}/spool
-
-mkdir -p $RPM_BUILD_ROOT/opt/%{name}/server_priv
-mkdir -p $RPM_BUILD_ROOT/opt/%{name}/server_priv/jobs
-mkdir -p $RPM_BUILD_ROOT/opt/%{name}/server_priv/queues
-mkdir -p $RPM_BUILD_ROOT/opt/%{name}/server_priv/accounting
-mkdir -p $RPM_BUILD_ROOT/opt/%{name}/server_priv/acl_svr
-mkdir -p $RPM_BUILD_ROOT/opt/%{name}/server_priv/acl_hosts
-mkdir -p $RPM_BUILD_ROOT/opt/%{name}/server_priv/acl_users
-mkdir -p $RPM_BUILD_ROOT/opt/%{name}/server_priv/acl_groups
-mkdir -p $RPM_BUILD_ROOT/opt/%{name}/server_logs
-
-mkdir -p $RPM_BUILD_ROOT/opt/%{name}/mom_priv
-mkdir -p $RPM_BUILD_ROOT/opt/%{name}/mom_priv/jobs
-mkdir -p $RPM_BUILD_ROOT/opt/%{name}/mom_logs
-mkdir -p $RPM_BUILD_ROOT/opt/%{name}/undelivered
-
-rm -rf $RPM_BUILD_ROOT/opt/%{name}/sched_priv
-mkdir -p $RPM_BUILD_ROOT/opt/%{name}/sched_priv
-mkdir -p $RPM_BUILD_ROOT/opt/%{name}/sched_logs
-
-mkdir -p $RPM_BUILD_ROOT/opt/%{name}/aux
-
-touch $RPM_BUILD_ROOT/opt/%{name}/pbs_environment
+#mkdir -p $RPM_BUILD_ROOT/opt/%{name}/spool
+#chmod a+rw $RPM_BUILD_ROOT/opt/%{name}/spool
+#
+#mkdir -p $RPM_BUILD_ROOT/opt/%{name}/server_priv
+#mkdir -p $RPM_BUILD_ROOT/opt/%{name}/server_priv/jobs
+#mkdir -p $RPM_BUILD_ROOT/opt/%{name}/server_priv/queues
+#mkdir -p $RPM_BUILD_ROOT/opt/%{name}/server_priv/accounting
+#mkdir -p $RPM_BUILD_ROOT/opt/%{name}/server_priv/acl_svr
+#mkdir -p $RPM_BUILD_ROOT/opt/%{name}/server_priv/acl_hosts
+#mkdir -p $RPM_BUILD_ROOT/opt/%{name}/server_priv/acl_users
+#mkdir -p $RPM_BUILD_ROOT/opt/%{name}/server_priv/acl_groups
+#mkdir -p $RPM_BUILD_ROOT/opt/%{name}/server_logs
+#
+#mkdir -p $RPM_BUILD_ROOT/opt/%{name}/mom_priv
+#mkdir -p $RPM_BUILD_ROOT/opt/%{name}/mom_priv/jobs
+#mkdir -p $RPM_BUILD_ROOT/opt/%{name}/mom_logs
+#mkdir -p $RPM_BUILD_ROOT/opt/%{name}/undelivered
+#
+#rm -rf $RPM_BUILD_ROOT/opt/%{name}/sched_priv
+#mkdir -p $RPM_BUILD_ROOT/opt/%{name}/sched_priv
+#mkdir -p $RPM_BUILD_ROOT/opt/%{name}/sched_logs
+#
+#mkdir -p $RPM_BUILD_ROOT/opt/%{name}/aux
+#
+#touch $RPM_BUILD_ROOT/opt/%{name}/pbs_environment
 
 mkdir -p $RPM_BUILD_ROOT/etc/ld.so.conf.d
 
@@ -184,12 +186,14 @@ fi
 ##
 %files
 %attr(755,root,root) /etc/rc.d/init.d/
-%config /opt/%{name}/server_name
+%config /var/spool/%{name}/server_name
 /opt/%{name}/
 /etc/ld.so.conf.d/torque.conf
+/etc/rc.d/init.d/
 %{pam_dir}
+/var/spool/%{name}
 
-%doc PBS_License.txt README.torque README.mpiexec Release_Notes CHANGELOG
+%doc PBS_License.txt README.torque Release_Notes CHANGELOG
 
 
 ##

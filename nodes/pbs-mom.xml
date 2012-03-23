@@ -136,7 +136,7 @@ class App(rocks.sql.Application):
       
 
 		print "cat &gt;",
-		print "/opt/torque/mom_priv/config",
+		print "/var/spool/torque/mom_priv/config",
 		print "&lt;&lt; 'EOF'"
                 print '$pbsserver %s.%s' % (master, domainname)
 
@@ -159,17 +159,16 @@ app.run()
 </eval>
 
 
-<file name="/etc/pbs.conf">
-pbs_home=/opt/torque
-pbs_exec=/opt/torque
-start_mom=1
-start_sched=0
-start_server=0
+<file name="/etc/sysconfig/pbs_mom">
+SBIN_PATH=/opt/torque/sbin
+# NOTE: hostname flag must match what is listed in nodelist
+PBS_DAEMON="$SBIN_PATH/pbs_mom -H &hostname;"
+PBS_HOME=/var/spool/torque
 </file>
 
 
-/sbin/chkconfig --add pbs
-/sbin/service pbs start
+/sbin/chkconfig --add pbs_mom
+/sbin/chkconfig pbs_mom on
 
 </post>
 
