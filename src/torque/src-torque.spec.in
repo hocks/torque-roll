@@ -122,7 +122,6 @@ mkdir -p $RPM_BUILD_ROOT/etc/rc.d/init.d
 
 cp $RPM_BUILD_DIR/%{name}-%{version}/contrib/init.d/pbs_server \
 	$RPM_BUILD_DIR/%{name}-%{version}/contrib/init.d/pbs_mom \
-	$RPM_BUILD_DIR/%{name}-%{version}/contrib/init.d/trqauthd \
 	$RPM_BUILD_ROOT/etc/rc.d/init.d
 
 #
