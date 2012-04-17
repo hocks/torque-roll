@@ -1,5 +1,5 @@
 VERSION = 5.4.1
-RELEASE = 1
+RELEASE = 1beta
 COLOR	= CadetBlue
 INCLUDE_SRPMS = 1
 
