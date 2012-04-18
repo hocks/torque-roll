@@ -148,18 +148,22 @@ set server allow_node_submit = True
 set server moab_array_compatible = True
 </file>
 
+<file name="/etc/sysconfig/pbs_server">
+PBS_DAEMON=/opt/torque/sbin/pbs_server
+</file>
 
 
 <!-- start the appropriate services -->
-/sbin/chkconfig --add pbs_server 
-/sbin/chkconfig pbs_server on
 touch /opt/torque/firstboot
 <file name='/etc/rc.d/rc.local' mode='append'>
 # initialize the queuing setup on first boot
 if [ -e /opt/torque/firstboot ]; then
+    /sbin/chkconfig --add pbs_server 
+    /sbin/chkconfig pbs_server on
     service pbs_server stop
-    rm -f /opt/torque/server_priv/serverdb
+    rm -f /var/spool/torque/server_priv/serverdb
     service pbs_server start
+    qmgr < /opt/torque/pbs.default
     rm -f /opt/torque/firstboot
 fi
 </file>
