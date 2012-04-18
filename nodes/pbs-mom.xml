@@ -172,7 +172,7 @@ PBS_HOME=/var/spool/torque
 # started during the install phase before the system is ready.
 touch /opt/torque/firstboot
 
-<file name="/etc/rc.d/rc.local" mode=append>
+<file name="/etc/rc.d/rc.local" mode="append">
 if [ -e /opt/torque/firstboot ]; then
   /sbin/chkconfig --add pbs_mom
   /sbin/chkconfig pbs_mom on
