@@ -14,13 +14,13 @@ add this to /etc/yum.conf
 
 [CentOS5]
 name=CentOS 5 std distro
-baseurl=http://fedora.uib.no/centos/5/os/x86_64/CentOS/
+baseurl=http://fedora.uib.no/centos/5/os/x86_64/
 enabled=yes
 
 
 [CentOS5-updates]
 name=CentOS 5 std distro
-baseurl=http://fedora.uib.no/centos/5/updates/x86_64/RPMS/
+baseurl=http://fedora.uib.no/centos/5/updates/x86_64/
 enabled=yes
 
 [EPEL]
@@ -38,13 +38,18 @@ Build on a rocks frontend
 
 cd /opt/rocks/share/devel/src/roll
 
-hg clone ..........
+hg clone http://depot.uit.no/hg/torque-roll torque
 
 cd torque/src/torque
 make rpm
-cd ../..
 
+cd ../..
 rpm -i RPMS/x86_64/torque-2.4.11-1.x86_64.rpm 
+
+cd src/mauiweb
+hg clone http://devsrc.cc.uit.no/mauiweb
+
+cd ../..
 
 make roll
 
