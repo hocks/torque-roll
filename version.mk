@@ -1,5 +1,5 @@
 VERSION = 6.0.0
-RELEASE = 1beta
+RELEASE = 1
 COLOR	= CadetBlue
 INCLUDE_SRPMS = 1
 
