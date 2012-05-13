@@ -9,6 +9,7 @@ Vendor: @VENDOR@
 License: @VENDOR@, (C) 1999-2002
 Group: Applications/Engineering
 Source: %{name}-%{version}.tar.gz
+Patch0: pbs_server_init_d.patch
 Buildroot: @VAR@/tmp/%{name}-buildroot
 BuildRequires: readline-devel tcl-devel tk-devel tclx-devel
 Prefix: /opt/torque
@@ -78,6 +79,7 @@ resources. Other key features include:
 ## SETUP and PATCH
 ##
 %setup
+%patch0 -p0
 
 # fix the tail bug in the init script
 /bin/sed -i 's/tail *+2/tail -n +2/g' src/tools/init.d/pbs
