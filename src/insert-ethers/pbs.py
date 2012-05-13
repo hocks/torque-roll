@@ -276,7 +276,7 @@ class Plugin(rocks.sql.InsertEthersPlugin):
         syslog(0,m)
         query = self.app.execute("select name,id from nodes order by rack,rank;")
         for name,id in self.app.fetchall():
-            self.removed(name,id)
+        #    self.removed(name,id)
             self.real_added(name,id)
         self.restart_daemons()
 

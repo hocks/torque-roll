@@ -120,7 +120,7 @@ class Command(rocks.commands.report.command):
       self.db.execute(query)
       for name, cpus in self.db.fetchall():
         # Print the queue manager commands.
-        self.addText("%s -c \"delete node %s\" 2> /dev/null\n" % (qmgr, name))
+        # self.addText("%s -c \"delete node %s\" 2> /dev/null\n" % (qmgr, name))
         self.addText("%s -c \"create node %s np=%d,ntype=cluster\" 2> /dev/null\n"
         % (qmgr, name, cpus))
       
