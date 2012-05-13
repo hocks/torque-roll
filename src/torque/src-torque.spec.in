@@ -90,7 +90,8 @@ resources. Other key features include:
 %build
 
 
-./configure --prefix=/opt/%{name} --with-server-home=/var/spool/%{name} \
+./configure --prefix=/opt/%{name}  \
+	--with-server-home=/var/spool/%{name} \
 	--with-default-server=rocks.dummy.host \
 	--with-rcp=scp --enable-syslog \
 	--disable-gcc-warnings --enable-docs \
@@ -114,8 +115,7 @@ make
 
 %{__make} install DESTDIR=$RPM_BUILD_ROOT INSTALL="%{__install} -p"
 
-env DESTDIR=$RPM_BUILD_ROOT sh ./buildutils/pbs_mkdirs common
-
+#env DESTDIR=$RPM_BUILD_ROOT sh ./buildutils/pbs_mkdirs common
 
 #
 # get the init script from the distro
@@ -188,7 +188,12 @@ fi
 %files
 %attr(755,root,root) /etc/rc.d/init.d/
 %config /var/spool/%{name}/server_name
-/opt/%{name}/
+/opt/%{name}/include/
+/opt/%{name}/lib/
+/opt/%{name}/lib64/
+/opt/%{name}/bin/
+/opt/%{name}/sbin/
+/opt/%{name}/man/
 /etc/ld.so.conf.d/torque.conf
 /etc/rc.d/init.d/
 %{pam_dir}

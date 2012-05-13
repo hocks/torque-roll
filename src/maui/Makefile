@@ -70,7 +70,7 @@ build:
 		export PATH+=:/opt/torque/bin;		\
 		./configure --prefix=$(PKGROOT)			\
 		--with-machine=rocks.dummy.host --with-spooldir=$(PKGROOT) \
-		  --with-key=0					\
+		  --with-key=0	;				\
 		$(MAKE);					\
 	)
 
@@ -79,6 +79,7 @@ install::
 	(							\
 		cd $(NAME)-$(VERSION);				\
 		$(MAKE) BUILDROOT=$(ROOT) install;\
+		chmod -R og-w $(ROOT);\
 	)
 
 clean::
