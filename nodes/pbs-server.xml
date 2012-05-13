@@ -163,7 +163,7 @@ if [ -e /opt/torque/firstboot ]; then
     service pbs_server stop
     rm -f /var/spool/torque/server_priv/serverdb
     service pbs_server start
-    qmgr &lt; /opt/torque/pbs.default
+    /opt/torque/bin/qmgr &lt; /opt/torque/pbs.default
     rm -f /opt/torque/firstboot
 fi
 </file>
