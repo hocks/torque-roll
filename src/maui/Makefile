@@ -71,6 +71,8 @@ build:
 		./configure --prefix=$(PKGROOT)			\
 		--with-machine=rocks.dummy.host --with-spooldir=$(PKGROOT) \
 		  --with-key=0	;				\
+		sed -i -e "/MAX_MRES/ s/1024/8192/g" include/moab.h	;\
+		sed -i -e "/MMAX_JOB/ s/4096/8192/g" ./include/msched.h	; \
 		$(MAKE);					\
 	)
 
