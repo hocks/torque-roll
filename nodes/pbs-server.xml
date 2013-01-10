@@ -138,6 +138,7 @@ set queue default started = True
 #
 set server scheduling = True
 set server acl_host_enable = False
+set server server_name = &Kickstart_PrivateHostname;.&Kickstart_PrivateDNSDomain;
 set server managers = maui@&Kickstart_PrivateHostname;.&Kickstart_PublicDNSDomain;
 set server managers += root@&Kickstart_PrivateHostname;.&Kickstart_PublicDNSDomain;
 set server default_queue = default
@@ -148,10 +149,18 @@ set server allow_node_submit = True
 set server moab_array_compatible = True
 </file>
 
+# make pbs_server listen on private interface
 <file name="/etc/sysconfig/pbs_server">
-PBS_DAEMON=/opt/torque/sbin/pbs_server
+PBS_DAEMON="/opt/torque/sbin/pbs_server -H  &Kickstart_PrivateHostname;.&Kickstart_PrivateDNSDomain;"
 </file>
 
+# make pbs_server accept jobs from FQDN. Ugly, but is the only solution.
+<file name="/etc/hosts.equiv" mode="append">
+&Kickstart_PrivateHostname;.&Kickstart_PublicDNSDomain;
+</file>
+
+#fix a bug in pbs database initialization
+sed -i "/-t create/ s/-t/-f -t/g" /etc/rc.d/init.d/pbs_server
 
 <!-- start the appropriate services -->
 touch /opt/torque/firstboot
@@ -160,10 +169,12 @@ touch /opt/torque/firstboot
 if [ -e /opt/torque/firstboot ]; then
     /sbin/chkconfig --add pbs_server 
     /sbin/chkconfig pbs_server on
-    service pbs_server stop
-    rm -f /var/spool/torque/server_priv/serverdb
+    service pbs_server create
     service pbs_server start
+    sleep 5
     /opt/torque/bin/qmgr &lt; /opt/torque/pbs.default
+    /opt/rocks/bin/rocks report pbsnodes | sh
+    /opt/torque/bin/pbsnodes -l offline | awk '{print $1}' | xargs  /opt/torque/bin/pbsnodes -c
     rm -f /opt/torque/firstboot
 fi
 </file>
