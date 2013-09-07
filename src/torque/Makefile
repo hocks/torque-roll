@@ -120,6 +120,7 @@ patch:
 #	-diff -uNr $(BASENAME).orig $(BASENAME) > $(BASENAME).patch
 #	cp $(BASENAME).patch $(REDHAT.SOURCES)
 	cp pbs_server_init_d.patch $(REDHAT.SOURCES)
+	cp fix_mom_priv_3.0.5.patch $(REDHAT.SOURCES)
 
 
 clean::
